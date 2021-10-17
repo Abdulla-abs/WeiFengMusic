@@ -58,14 +58,14 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
 
     private MediaBrowserCompat mMediaBrowser;
     private MediaControllerCompat mMediaController;
-    
+
     private ToolUtil mToolUtil;
     private GlideLoadUtils mGlideLoadUtils;
     private OkHttpUtil mOkHttpUtil;
-    
+
     private Bitmap mBackBitmap = null;
     private int[] colors = null;
-    
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -78,15 +78,15 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
         initMediaBrowser();
         initData();
     }
-    
+
     private void initMediaBrowser() {
         mMediaBrowser = new MediaBrowserCompat(this,
-            new ComponentName(this, MusicService.class),
-            connectionCallback, null);
+                new ComponentName(this, MusicService.class),
+                connectionCallback, null);
         mMediaBrowser.connect();
     }
 
-    private MediaBrowserCompat.ConnectionCallback connectionCallback = new MediaBrowserCompat.ConnectionCallback() {  
+    private MediaBrowserCompat.ConnectionCallback connectionCallback = new MediaBrowserCompat.ConnectionCallback() {
         @Override
         public void onConnected() {
             MediaSessionCompat.Token token = mMediaBrowser.getSessionToken();
@@ -104,7 +104,7 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
         public void onSessionEvent(String event, Bundle extras) {
             super.onSessionEvent(event, extras);
         }
-        
+
         @Override
         public void onMetadataChanged(MediaMetadataCompat metadata) {
             super.onMetadataChanged(metadata);
@@ -121,56 +121,59 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
         public void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {
             super.onQueueChanged(queue);
             mMusicListAdpater = new MusicListAdapter(MusicListActivity.this, queue);
-            mRecyclerView.setAdapter(mMusicListAdpater); 
+            mRecyclerView.setAdapter(mMusicListAdpater);
             mMusicListAdpater.OnClickListener(MusicListActivity.this);
         }
     };
-    
+
     public void getBackBitmap() {
         if(mBackBitmap == null) {
             mGlideLoadUtils.getBitmap(this, mToolUtil.readString("SongListIcon"), 300, new SimpleTarget<Bitmap>() {
-                    @Override
-                    public void onResourceReady(Bitmap bitmap, GlideAnimation<? super Bitmap> glideAnimation) {
-                        mBackBitmap = bitmap;
-                        colors = ColorUtil.getColor(mBackBitmap);
-                        mMusicListBackground.setImageBitmap(mBackBitmap);
-                        mMusicListName.setTextColor(colors[1]);
-                        mMusicListMsg.setTextColor(colors[1]);
-                        mToolUtil.setStatusBarTextColor(MusicListActivity.this, colors[0]);
-                    }
-                });
-                return;
+                @Override
+                public void onResourceReady(Bitmap bitmap, GlideAnimation<? super Bitmap> glideAnimation) {
+                    mBackBitmap = bitmap;
+                    colors = ColorUtil.getColor(mBackBitmap);
+                    mMusicListBackground.setImageBitmap(mBackBitmap);
+                    mMusicListName.setTextColor(colors[1]);
+                    mMusicListMsg.setTextColor(colors[1]);
+                    mToolUtil.setStatusBarTextColor(MusicListActivity.this, colors[0]);
+                }
+            });
+            return;
         }
         mToolUtil.setStatusBarTextColor(this, colors[0]);
     }
-    
+
     private void initData() {
         if (mToolUtil.readBool("MusicId")) {
             mGlideLoadUtils.setCircle(this, mToolUtil.readString("MusicIcon"), mPlayBarIcon);
-            mPlayBarTitle.setText(mToolUtil.readString("MusicName") + "-" + mToolUtil.readString("MusicSinger"));          
+            mPlayBarTitle.setText(mToolUtil.readString("MusicName") + "-" + mToolUtil.readString("MusicSinger"));
             Glide.with(getApplicationContext()).load(mToolUtil.readString("MusicIcon")).asBitmap().into(new SimpleTarget<Bitmap>() {
-                    @Override
-                    public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
-                        int[] colors = ColorUtil.getColor(resource);
-                        GradientDrawable mGroupDrawable= (GradientDrawable) mPlayBarRoot.getBackground();
-                        mGroupDrawable.setColor(colors[1]);
-                        mPlayBarTitle.setTextColor(colors[0]);
-                        mPlayBarPause.setColorFilter(colors[0]);
-                        mPlayBarList.setColorFilter(colors[0]);
-                    }
-                });
+                @Override
+                public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
+                    int[] colors = ColorUtil.getColor(resource);
+                    GradientDrawable mGroupDrawable= (GradientDrawable) mPlayBarRoot.getBackground();
+                    mGroupDrawable.setColor(colors[1]);
+                    mPlayBarTitle.setTextColor(colors[0]);
+                    mPlayBarPause.setColorFilter(colors[0]);
+                    mPlayBarList.setColorFilter(colors[0]);
+                }
+            });
         }
-    }     
-    
-    public void initData(final String id, final String cookie) { 
+    }
+
+    public void initData(final String id, final String cookie) {
         mMusicListName.setText(mToolUtil.readString("SongListName"));
-        mGlideLoadUtils.setRound(MusicListActivity.this, mToolUtil.readString("SongListIcon"), 8,  mMusicListIcon);       
+        mGlideLoadUtils.setRound(MusicListActivity.this, mToolUtil.readString("SongListIcon"), 8,  mMusicListIcon);
         getBackBitmap();
         Bundle bundle = new Bundle();
         bundle.putString("id", id);
         bundle.putString("cookie", cookie);
-        mMediaController.getTransportControls().sendCustomAction("MusicList", bundle); 
-        mOkHttpUtil.get(this, CloudMusicApi.SONG_LIST_DATA + id, cookie, mOkHttpUtil.DAY, new Callback() {
+        mMediaController.getTransportControls().sendCustomAction("MusicList", bundle);
+        if ("-1".equals(id)){
+
+        }else {
+            OkHttpUtil.get(this, CloudMusicApi.SONG_LIST_DATA + id, cookie, mOkHttpUtil.DAY, new Callback() {
 
                 @Override
                 public void onFailure(Call p1, IOException p2) {
@@ -181,13 +184,15 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
                     UserMusicListBean usermusicbean = new UserMusicListBean();
                     usermusicbean = mGson.fromJson(response.body().string(), UserMusicListBean.class);
                     runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                //mMusicListMsg.setText(usermusicbean.playlist.description);    
-                            }
-                        });
+                        @Override
+                        public void run() {
+                            //mMusicListMsg.setText(usermusicbean.playlist.description);
+                        }
+                    });
                 }
             });
+        }
+
     }
 
     public void initView() {
@@ -195,22 +200,22 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
         mTitleView.setText("歌单");
         mAppBarLayout = (AppBarLayout) findViewById(R.id.musiclist_appbar);
         mAppBarLayout.addOnOffsetChangedListener(new AppBarStateChangeListener() {
-                @Override
-                public void onStateChanged(AppBarLayout appBarLayout, AppBarStateChangeListener.State state) {
-                    switch(state) {
-                        case EXPANDED:
-                            mTitleView.setText("");
-                            getBackBitmap();
-                            break;
-                        case COLLAPSED:
-                            mTitleView.setText(mMusicListName.getText());
-                            ToolUtil.setStatusBarTextColor(MusicListActivity.this, getResources().getColor(R.color.colorPrimary));
-                            break;
-                        case INTERMEDIATE:
-                            break;
-                    }
+            @Override
+            public void onStateChanged(AppBarLayout appBarLayout, AppBarStateChangeListener.State state) {
+                switch(state) {
+                    case EXPANDED:
+                        mTitleView.setText("");
+                        getBackBitmap();
+                        break;
+                    case COLLAPSED:
+                        mTitleView.setText(mMusicListName.getText());
+                        ToolUtil.setStatusBarTextColor(MusicListActivity.this, getResources().getColor(R.color.colorPrimary));
+                        break;
+                    case INTERMEDIATE:
+                        break;
                 }
-            });
+            }
+        });
         mMusicListName = (TextView) findViewById(R.id.musiclist_name);
         mMusicListMsg = (TextView) findViewById(R.id.musiclist_msg);
         mMusicListBackground = (ImageView) findViewById(R.id.musiclist_back);
@@ -219,7 +224,7 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
         LinearLayoutManager manager = new LinearLayoutManager(this);
         manager.setOrientation(LinearLayoutManager.VERTICAL);
         mRecyclerView.setLayoutManager(manager);
-        mPlayBarIcon = (ImageView) findViewById(R.id.playbar_icon);    
+        mPlayBarIcon = (ImageView) findViewById(R.id.playbar_icon);
         mPlayBarList = (ImageView) findViewById(R.id.playbar_list);
         mPlayBarList.setOnClickListener(this);
         mPlayBarPause = (ImageView) findViewById(R.id.playbar_pause);
@@ -244,12 +249,12 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
                 break;
         }
     }
-    
+
     @Override
     public void OnClick(MediaSessionCompat.QueueItem data, int position) {
         mMediaController.getTransportControls().skipToQueueItem(position);
     }
-    
+
     @Override
     protected void onDestroy() {
         super.onDestroy();

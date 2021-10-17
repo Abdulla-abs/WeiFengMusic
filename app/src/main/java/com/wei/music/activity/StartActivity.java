@@ -1,28 +1,41 @@
 package com.wei.music.activity;
+
 import androidx.appcompat.app.AppCompatActivity;
+
 import android.os.Bundle;
+
 import com.wei.music.R;
+
 import android.content.Intent;
+
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
 import android.Manifest;
+
 import java.util.List;
 import java.util.ArrayList;
+
 import android.os.Build;
 import android.graphics.Color;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.session.MediaControllerCompat;
+
 import com.tencent.mmkv.MMKV;
+
 import android.content.ComponentName;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.os.RemoteException;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+
 import com.wei.music.utils.ToolUtil;
+
 import android.content.pm.PackageManager;
+
 import com.wei.music.service.MusicService;
 
 public class StartActivity extends AppCompatActivity {
@@ -39,9 +52,9 @@ public class StartActivity extends AppCompatActivity {
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
-                case WHAT_DELAY:          
-                    MMKV mkv = MMKV.defaultMMKV();      
-                    if(!mkv.decodeBool("isFirstFun")) {
+                case WHAT_DELAY:
+                    MMKV mkv = MMKV.defaultMMKV();
+                    if (!mkv.decodeBool("isFirstFun")) {
                         mkv.encode("isFirstFun", true);
                     } else {
                         if (mToolUtil.readBool("SongListId") && mToolUtil.readInt("MusicPosition") != -1) {
@@ -54,7 +67,7 @@ public class StartActivity extends AppCompatActivity {
                     startActivity(new Intent(StartActivity.this, MainActivity.class));
                     finish();
                     break;
-            }      
+            }
         }
 
     };
@@ -70,8 +83,8 @@ public class StartActivity extends AppCompatActivity {
 
     private void initMediaBrowser() {
         mMediaBrowser = new MediaBrowserCompat(this,
-                                               new ComponentName(this, MusicService.class),
-                                               connectionCallback, null);
+                new ComponentName(this, MusicService.class),
+                connectionCallback, null);
         mMediaBrowser.connect();
     }
 
@@ -89,7 +102,8 @@ public class StartActivity extends AppCompatActivity {
             MediaSessionCompat.Token token = mMediaBrowser.getSessionToken();
             try {
                 mMediaController = new MediaControllerCompat(StartActivity.this, token);
-            } catch (RemoteException e) {}
+            } catch (RemoteException e) {
+            }
             mMediaController.registerCallback(mMediaCallback);
             getPermission();
         }
@@ -100,10 +114,12 @@ public class StartActivity extends AppCompatActivity {
         public void onMetadataChanged(MediaMetadataCompat metadata) {
             super.onMetadataChanged(metadata);
         }
+
         @Override
         public void onPlaybackStateChanged(PlaybackStateCompat state) {
             super.onPlaybackStateChanged(state);
         }
+
         @Override
         public void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {
             super.onQueueChanged(queue);
@@ -111,12 +127,15 @@ public class StartActivity extends AppCompatActivity {
     };
 
 
-    String[] permissions = new String[]{Manifest.permission.RECORD_AUDIO,
-        Manifest.permission.READ_EXTERNAL_STORAGE,
-        Manifest.permission.READ_PHONE_STATE,
-        Manifest.permission.ACCESS_FINE_LOCATION};
+    String[] permissions = new String[]{
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.ACCESS_FINE_LOCATION
+    };
     List<String> mPermissionList = new ArrayList<>();
     private final int mRequestCode = 100;
+
     private void initPermission() {
         mPermissionList.clear();
         for (int i = 0; i < permissions.length; i++) {
@@ -126,8 +145,8 @@ public class StartActivity extends AppCompatActivity {
         }
         if (mPermissionList.size() > 0) {
             ActivityCompat.requestPermissions(this, permissions, mRequestCode);
-        }else{
-            handler.sendEmptyMessageDelayed(WHAT_DELAY, DELAY_TIME);          
+        } else {
+            handler.sendEmptyMessageDelayed(WHAT_DELAY, DELAY_TIME);
         }
     }
 
@@ -144,7 +163,7 @@ public class StartActivity extends AppCompatActivity {
             }
             if (hasPermissionDismiss) {
                 showPermissionDialog();
-            }else{
+            } else {
                 handler.sendEmptyMessageDelayed(WHAT_DELAY, DELAY_TIME);
             }
         }

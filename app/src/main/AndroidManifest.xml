@@ -1,15 +1,15 @@
 <?xml version='1.0' encoding='utf-8'?>
 <manifest
-	xmlns:android="http://schemas.android.com/apk/res/android"
-	package="com.wei.music">
-	
-	<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.wei.music">
+
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <uses-permission android:name="android.permission.GET_TASKS" />
-    
+
     <!-- 修改或删除您的SD卡中的内容 -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
@@ -29,22 +29,24 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
-        
+
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" /> <!-- Android 13+ -->
+
     <uses-feature
         android:name="org.apache.http.legacy"
         android:required="false"/>
 
-	<application
-		android:name=".App"
-		android:allowBackup="true"
-		android:icon="@mipmap/ic_launcher"
-		android:roundIcon="@mipmap/ic_launcher_round"
-		android:label="@string/app_name"
-		android:theme="@style/AppTheme"
-		android:resizeableActivity="true"
+    <application
+        android:name=".App"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme"
+        android:resizeableActivity="true"
         android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true"
-		android:networkSecurityConfig="@xml/network_security_config">
+        android:networkSecurityConfig="@xml/network_security_config">
 
         <activity
             android:name=".activity.StartActivity"
@@ -56,15 +58,15 @@
             </intent-filter>
         </activity>
 
-        <activity 
+        <activity
             android:name=".activity.MainActivity"
             android:theme="@style/AppTheme"
             android:configChanges="keyboardHidden|orientation|screenSize"/>
 
-        <activity 
+        <activity
             android:name=".activity.MusicListActivity"
             android:theme="@style/TransparentActivityTheme"/>
-        
+
         <activity
             android:name=".activity.SearchActivity"
             android:theme="@style/AppTheme"/>
@@ -73,33 +75,33 @@
             android:name=".activity.PlayerActivity"
             android:launchMode="singleTask"
             android:theme="@style/PlayerActivityTheme"/>
-        
+
         <activity
             android:name=".activity.EqualizerActivity"
             android:theme="@style/HighlightTheme"/>
-        
+
         <activity
             android:name=".activity.MusicListDialog"
             android:theme="@style/DialogActivityTheme"/>
-        
+
         <activity
             android:name=".activity.PermissionActivity"
             android:theme="@style/DialogActivityTheme"/>
-            
+
         <service android:name=".service.MusicService"/>
-            
+
         <meta-data
             android:name="android.max_aspect"
             android:value="4.0"/>
-        
+
         <meta-data
             android:name="hwc-theme"
             android:value="androidhwext:style/Theme.Emui"/>
-        
+
         <!-- 您从百度网站获取的APP KEY，根据实际您的APP申请的APP_KEY进行修改 -->
         <meta-data
             android:name="BaiduMobAd_STAT_ID"
-            android:value="22fdd25e30" /> 
+            android:value="22fdd25e30" />
 
         <!-- 渠道商编号 -->
         <meta-data
@@ -131,16 +133,16 @@
             android:name="BaiduMobAd_WIFI_LOCATION"
             android:value="true" />
 
-		<provider
-			android:name="androidx.core.content.FileProvider"
-			android:authorities="com.wei.music.fileprovider"
-			android:exported="false"
-			android:grantUriPermissions="true">
-			<meta-data
-				android:name="android.support.FILE_PROVIDER_PATHS"
-				android:resource="@xml/file_paths" />
-		</provider>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.wei.music.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
-	</application>
+    </application>
 
 </manifest>
