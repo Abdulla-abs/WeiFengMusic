@@ -2,6 +2,7 @@ package com.wei.music.activity;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.os.Build;
 import android.os.Bundle;
 
 import com.wei.music.R;
@@ -14,24 +15,21 @@ import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 
-import java.util.List;
-import java.util.ArrayList;
+import java.util.Arrays;
 
-import android.os.Build;
 import android.graphics.Color;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 
-import com.tencent.mmkv.MMKV;
-
 import android.content.ComponentName;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.os.RemoteException;
-import android.support.v4.media.MediaMetadataCompat;
-import android.support.v4.media.session.PlaybackStateCompat;
 
+import com.wei.music.utils.DefaultMediaControllerCompatCallback;
+import com.wei.music.utils.MMKVUtils;
 import com.wei.music.utils.ToolUtil;
 
 import android.content.pm.PackageManager;
@@ -39,63 +37,6 @@ import android.content.pm.PackageManager;
 import com.wei.music.service.MusicService;
 
 public class StartActivity extends AppCompatActivity {
-
-    private MediaBrowserCompat mMediaBrowser;
-    private MediaControllerCompat mMediaController;
-
-    private ToolUtil mToolUtil;
-
-    private final static int WHAT_DELAY = 1;
-    private final static int DELAY_TIME = 30;
-    private Handler handler = new Handler() {
-
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case WHAT_DELAY:
-                    MMKV mkv = MMKV.defaultMMKV();
-                    if (!mkv.decodeBool("isFirstFun")) {
-                        mkv.encode("isFirstFun", true);
-                    } else {
-                        if (mToolUtil.readBool("SongListId") && mToolUtil.readInt("MusicPosition") != -1) {
-                            Bundle bundle = new Bundle();
-                            bundle.putString("id", mToolUtil.readString("SongListId"));
-                            bundle.putString("cookie", mToolUtil.readString("UserCookie"));
-                            mMediaController.getTransportControls().sendCustomAction("Music", bundle);
-                        }
-                    }
-                    startActivity(new Intent(StartActivity.this, MainActivity.class));
-                    finish();
-                    break;
-            }
-        }
-
-    };
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_start);
-        mToolUtil = ToolUtil.getInstance();
-        mToolUtil.setStatusBarColor(this, Color.TRANSPARENT, Color.TRANSPARENT, true);
-        initMediaBrowser();
-    }
-
-    private void initMediaBrowser() {
-        mMediaBrowser = new MediaBrowserCompat(this,
-                new ComponentName(this, MusicService.class),
-                connectionCallback, null);
-        mMediaBrowser.connect();
-    }
-
-    public void getPermission() {
-        if (Build.VERSION.SDK_INT >= 23) {//android 6.0
-            initPermission();
-        } else {
-            handler.sendEmptyMessageDelayed(WHAT_DELAY, DELAY_TIME);
-        }
-    }
-
     private MediaBrowserCompat.ConnectionCallback connectionCallback = new MediaBrowserCompat.ConnectionCallback() {
         @Override
         public void onConnected() {
@@ -103,50 +44,88 @@ public class StartActivity extends AppCompatActivity {
             try {
                 mMediaController = new MediaControllerCompat(StartActivity.this, token);
             } catch (RemoteException e) {
+                try {
+                    mMediaController = new MediaControllerCompat(StartActivity.this, token);
+                } catch (RemoteException e2) {
+                    return;
+                }
             }
-            mMediaController.registerCallback(mMediaCallback);
-            getPermission();
+            mMediaController.registerCallback(new DefaultMediaControllerCompatCallback());
         }
     };
+    private MediaBrowserCompat mMediaBrowser;
+    private MediaControllerCompat mMediaController;
+    private final static int WHAT_START = 1;
+    private final int mRequestPermissionCode = 100;
+    private Handler handler;
 
-    private MediaControllerCompat.Callback mMediaCallback = new MediaControllerCompat.Callback() {
-        @Override
-        public void onMetadataChanged(MediaMetadataCompat metadata) {
-            super.onMetadataChanged(metadata);
-        }
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_start);
+        ToolUtil.setStatusBarColor(this, Color.TRANSPARENT, Color.TRANSPARENT, true);
 
-        @Override
-        public void onPlaybackStateChanged(PlaybackStateCompat state) {
-            super.onPlaybackStateChanged(state);
-        }
+        initHandler();
+        initMediaBrowser();
+        requestPermission23();
+    }
 
-        @Override
-        public void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {
-            super.onQueueChanged(queue);
-        }
-    };
+    private void initHandler() {
+        handler = new Handler(Looper.getMainLooper()) {
+            @Override
+            public void handleMessage(@NonNull Message msg) {
+                if (msg.what == WHAT_START) {
+                    if (MMKVUtils.isFirstRun()) {
+                        MMKVUtils.appRun();
+                    } else {
+                        if (mMediaController != null && MMKVUtils.hasLastSongData()) {
+                            Bundle bundle = new Bundle();
+                            bundle.putString("id", String.valueOf(MMKVUtils.lastSongListId()));
+                            bundle.putString("cookie", MMKVUtils.getUserCookie());
+                            mMediaController.getTransportControls()
+                                    .sendCustomAction(MusicService.ACTION_START_MUSIC, bundle);
+                            startActivity(new Intent(StartActivity.this, MainActivity.class));
+                            finish();
+                        } else {
+                            startActivity(new Intent(StartActivity.this, MainActivity.class));
+                            finish();
+                        }
+                    }
 
-
-    String[] permissions = new String[]{
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.READ_PHONE_STATE,
-            Manifest.permission.ACCESS_FINE_LOCATION
-    };
-    List<String> mPermissionList = new ArrayList<>();
-    private final int mRequestCode = 100;
-
-    private void initPermission() {
-        mPermissionList.clear();
-        for (int i = 0; i < permissions.length; i++) {
-            if (ContextCompat.checkSelfPermission(this, permissions[i]) != PackageManager.PERMISSION_GRANTED) {
-                mPermissionList.add(permissions[i]);//添加还未授予的权限
+                }
             }
-        }
-        if (mPermissionList.size() > 0) {
-            ActivityCompat.requestPermissions(this, permissions, mRequestCode);
+        };
+    }
+
+    private void initMediaBrowser() {
+        mMediaBrowser = new MediaBrowserCompat(
+                this,
+                new ComponentName(this, MusicService.class),
+                connectionCallback,
+                null
+        );
+        mMediaBrowser.connect();
+    }
+
+    private void requestPermission23() {
+        final String[] permissions = new String[]{
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.ACCESS_FINE_LOCATION
+        };
+
+        // 使用 Stream 过滤出没有授权的权限
+        String[] unauthorizedPermissions = Arrays.stream(permissions)
+                .filter(permission -> ContextCompat.checkSelfPermission(this, permission)
+                        != PackageManager.PERMISSION_GRANTED)
+                .toArray(String[]::new);
+
+
+        if (unauthorizedPermissions.length != 0) {
+            ActivityCompat.requestPermissions(this, unauthorizedPermissions, mRequestPermissionCode);
         } else {
-            handler.sendEmptyMessageDelayed(WHAT_DELAY, DELAY_TIME);
+            handler.sendEmptyMessage(WHAT_START);
         }
     }
 
@@ -155,16 +134,17 @@ public class StartActivity extends AppCompatActivity {
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         boolean hasPermissionDismiss = false;//有权限没有通过
-        if (mRequestCode == requestCode) {
-            for (int i = 0; i < grantResults.length; i++) {
-                if (grantResults[i] == -1) {
+        if (mRequestPermissionCode == requestCode) {
+            for (int grantResult : grantResults) {
+                if (grantResult != RESULT_OK) {
                     hasPermissionDismiss = true;
+                    break;
                 }
             }
             if (hasPermissionDismiss) {
                 showPermissionDialog();
             } else {
-                handler.sendEmptyMessageDelayed(WHAT_DELAY, DELAY_TIME);
+                handler.sendEmptyMessage(WHAT_START);
             }
         }
     }
@@ -174,10 +154,11 @@ public class StartActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onRestart() {
-        super.onRestart();
-        getPermission();
+    protected void onDestroy() {
+        super.onDestroy();
+        handler.removeCallbacksAndMessages(null);
+        handler = null;
+        connectionCallback = null;
     }
-
 }
 

@@ -3,8 +3,6 @@ package com.wei.music.service;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
@@ -19,7 +17,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.support.v4.media.MediaBrowserCompat;
-import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
@@ -51,12 +48,12 @@ import okhttp3.Response;
 
 import com.wei.music.bean.UserLikeListBean;
 
-import androidx.media.MediaBrowserServiceCompat.Result;
+public class MusicService extends MediaBrowserServiceCompat implements ServiceCallback {
 
-import android.support.v4.media.MediaBrowserCompat.MediaItem;
-import android.os.Looper;
-
-public class MusicService extends MediaBrowserServiceCompat {
+    public static final String ACTION_START_MUSIC = "START_MUSIC";
+    public static final String ACTION_LIKE_MUSIC = "LIKE_MUSIC";
+    public static final String ACTION_PLAY_MUSIC = "PLAY_MUSIC";
+    public static final String ACTION_PLAY_MODE = "PLAY_MODE";
 
     private static final int NoticeId = 2969;
     private static final String NoticeName = "WeiFengMusic";
@@ -110,7 +107,7 @@ public class MusicService extends MediaBrowserServiceCompat {
     private PendingIntent playAction;
     private PendingIntent prevAction;
     private PendingIntent nextAction;
-    private MediaServlicReceiver mMediaServlicReceiver;
+    private MediaServiceReceiver mMediaServiceRec;
 
     private Gson mGson = new Gson();
 
@@ -151,13 +148,13 @@ public class MusicService extends MediaBrowserServiceCompat {
         mMediaSession.setActive(true);
 
         Intent intentNext = new Intent("nextMusic");
-        nextAction = PendingIntent.getBroadcast(getApplicationContext(), 3, intentNext, 0);
+        nextAction = PendingIntent.getBroadcast(getApplicationContext(), 3, intentNext, PendingIntent.FLAG_IMMUTABLE);
 
         Intent intentPlay = new Intent("playMusic");
-        playAction = PendingIntent.getBroadcast(getApplicationContext(), 2, intentPlay, 0);
+        playAction = PendingIntent.getBroadcast(getApplicationContext(), 2, intentPlay, PendingIntent.FLAG_IMMUTABLE);
 
         Intent intentPrev = new Intent("prevMusic");
-        prevAction = PendingIntent.getBroadcast(getApplicationContext(), 1, intentPrev, 0);
+        prevAction = PendingIntent.getBroadcast(getApplicationContext(), 1, intentPrev, PendingIntent.FLAG_IMMUTABLE);
 
     }
 
@@ -168,8 +165,13 @@ public class MusicService extends MediaBrowserServiceCompat {
         intentFilter.addAction("prevMusic");
         intentFilter.addAction("playMusic");
         intentFilter.addAction("nextMusic");
-        mMediaServlicReceiver = new MediaServlicReceiver();
-        registerReceiver(mMediaServlicReceiver, intentFilter);
+        mMediaServiceRec = new MediaServiceReceiver(this);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(mMediaServiceRec, intentFilter, RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(mMediaServiceRec, intentFilter);
+        }
+//        registerReceiver(mMediaServiceRec, intentFilter);
 
         mMediaPlayer = new MediaPlayer();
         mMediaPlayer.setWakeMode(App.getContext(), PowerManager.PARTIAL_WAKE_LOCK);
@@ -214,8 +216,8 @@ public class MusicService extends MediaBrowserServiceCompat {
             mMediaPlayer.reset();
             //mMediaPlayer.setDataSource(CloudMusicApi.MUSIC_PLAY + mLastMusicList.get(mPosition).getDescription().getMediaId());
             Uri mediaUri = mLastMusicList.get(mPosition).getDescription().getMediaUri();
-            if (mediaUri != null){
-                mMediaPlayer.setDataSource(this,mediaUri);
+            if (mediaUri != null) {
+                mMediaPlayer.setDataSource(this, mediaUri);
             }
             mToolUtil.write("MusicPosition", mPosition);
             mMediaPlayer.prepareAsync();
@@ -242,26 +244,6 @@ public class MusicService extends MediaBrowserServiceCompat {
             });
         } catch (IOException e) {
             e.printStackTrace();
-        }
-    }
-
-    private class MediaServlicReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            switch (intent.getAction()) {
-                case AudioManager.ACTION_AUDIO_BECOMING_NOISY:
-                    mMediaSession.getController().getTransportControls().pause();
-                    break;
-                case "prevMusic":
-                    mMediaSession.getController().getTransportControls().skipToPrevious();
-                    break;
-                case "playMusic":
-                    mMediaSession.getController().getTransportControls().play();
-                    break;
-                case "nextMusic":
-                    mMediaSession.getController().getTransportControls().skipToNext();
-                    break;
-            }
         }
     }
 
@@ -385,20 +367,21 @@ public class MusicService extends MediaBrowserServiceCompat {
             super.onCustomAction(action, extras);
             String id = extras.getString("id");
             switch (action) {
-                case "LikeMusic":
-                    unLikeMusic(id, extras.getBoolean("is"));
-                    break;
-                case "Music":
+
+                case ACTION_START_MUSIC:
                     mPosition = mToolUtil.readInt("MusicPosition");
                     setMusicList(id, extras.getString("cookie"), true);
                     if (!"-1".equals(id)) {
                         getLikeList();
                     }
                     break;
-                case "MusicList":
+                case ACTION_LIKE_MUSIC:
+                    unLikeMusic(id, extras.getBoolean("is"));
+                    break;
+                case ACTION_PLAY_MUSIC:
                     setMusicList(id, extras.getString("cookie"), false);
                     break;
-                case "PlayModel":
+                case ACTION_PLAY_MODE:
                     mPlayModel = extras.getInt("model");
                     mToolUtil.write("PlayModel", mPlayModel);
                     Bundle bundle = new Bundle();
@@ -466,7 +449,7 @@ public class MusicService extends MediaBrowserServiceCompat {
                                         .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, AudioFileFetcher.cachedLocalSongsList.get(i).getArtist())//歌手
                                         .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, AudioFileFetcher.cachedLocalSongsList.get(i).getAlbum())//歌曲封面
                                         .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, AudioFileFetcher.cachedLocalSongsList.get(i).getId() + "")//歌曲id
-                                        .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI,AudioFileFetcher.cachedLocalSongsList.get(i).getPath())
+                                        .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, AudioFileFetcher.cachedLocalSongsList.get(i).getPath())
                                         .build()
                                         .getDescription(),
                                 i
@@ -494,7 +477,7 @@ public class MusicService extends MediaBrowserServiceCompat {
                                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, usermusicbean.playlist.tracks.get(i).ar.get(0).name)//歌手
                                 .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, usermusicbean.playlist.tracks.get(i).al.picUrl)//歌曲封面
                                 .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, usermusicbean.playlist.tracks.get(i).id)//歌曲id
-                                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI,CloudMusicApi.MUSIC_PLAY + usermusicbean.playlist.tracks.get(i).id)
+                                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, CloudMusicApi.MUSIC_PLAY + usermusicbean.playlist.tracks.get(i).id)
                                 .build().getDescription(), i));
                     }
                 }
@@ -599,7 +582,25 @@ public class MusicService extends MediaBrowserServiceCompat {
         if (mNotificationManager != null) {
             mNotificationManager.cancel(NoticeId);
         }
-        unregisterReceiver(mMediaServlicReceiver);
+        unregisterReceiver(mMediaServiceRec);
+    }
+    @Override
+    public void onAudioBecomingNoisy() {
+        mMediaSession.getController().getTransportControls().pause();
     }
 
+    @Override
+    public void onActionPreMusic() {
+        mMediaSession.getController().getTransportControls().skipToPrevious();
+    }
+
+    @Override
+    public void onActionPlayMusic() {
+        mMediaSession.getController().getTransportControls().play();
+    }
+
+    @Override
+    public void onActionNextMusic() {
+        mMediaSession.getController().getTransportControls().skipToNext();
+    }
 }

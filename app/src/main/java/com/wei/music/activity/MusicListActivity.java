@@ -169,7 +169,7 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
         Bundle bundle = new Bundle();
         bundle.putString("id", id);
         bundle.putString("cookie", cookie);
-        mMediaController.getTransportControls().sendCustomAction("MusicList", bundle);
+        mMediaController.getTransportControls().sendCustomAction(MusicService.ACTION_PLAY_MUSIC, bundle);
         if ("-1".equals(id)){
 
         }else {
@@ -237,16 +237,12 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
 
     @Override
     public void onClick(View v) {
-        switch(v.getId()) {
-            case R.id.playbar_pause:
-                mMediaController.getTransportControls().play();
-                break;
-            case R.id.playbar_view:
-                startActivity(new Intent(this, PlayerActivity.class));
-                break;
-            case R.id.playbar_list:
-                startActivity(new Intent(this, MusicListDialog.class));
-                break;
+        if (v.getId() == R.id.playbar_pause) {
+            mMediaController.getTransportControls().play();
+        } else if (v.getId() == R.id.playbar_view) {
+            startActivity(new Intent(this, PlayerActivity.class));
+        } else if (v.getId() == R.id.playbar_list) {
+            startActivity(new Intent(this, MusicListDialog.class));
         }
     }
 

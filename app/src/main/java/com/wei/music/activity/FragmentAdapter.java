@@ -8,7 +8,7 @@ import java.util.List;
 
 public class FragmentAdapter extends FragmentStateAdapter {
 
-    private List<Fragment> mFragments;
+    private final List<Fragment> mFragments;
 
     public FragmentAdapter(@NonNull FragmentActivity fragmentActivity, List<Fragment> fragments) {
         super(fragmentActivity);
