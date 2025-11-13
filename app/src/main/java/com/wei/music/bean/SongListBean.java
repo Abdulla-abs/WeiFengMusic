@@ -5,6 +5,9 @@ public class SongListBean {
     private String image;
     private String id;
 
+    public SongListBean() {
+    }
+
     public SongListBean(String title, String number, String image, String id) {
         this.title = title;
         this.number = number;

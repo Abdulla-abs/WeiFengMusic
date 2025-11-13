@@ -215,6 +215,8 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
                 mPosition = mLastMusicList.size() - 1;
             mMediaPlayer.reset();
             //mMediaPlayer.setDataSource(CloudMusicApi.MUSIC_PLAY + mLastMusicList.get(mPosition).getDescription().getMediaId());
+
+            if (mLastMusicList.isEmpty()) return;
             Uri mediaUri = mLastMusicList.get(mPosition).getDescription().getMediaUri();
             if (mediaUri != null) {
                 mMediaPlayer.setDataSource(this, mediaUri);
@@ -417,25 +419,25 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
     }
 
     private void getLikeList() {
-        mOkHttpUtil.get(App.getContext(), CloudMusicApi.USER_LISK_LIST + mToolUtil.readString("UserId") + "&timestamp=" + System.currentTimeMillis(), mToolUtil.readString("UserCookie"), mOkHttpUtil.SECOND / 60, new Callback() {
-            @Override
-            public void onFailure(Call p1, IOException p2) {
-            }
-
-            @Override
-            public void onResponse(Call p1, final Response response) throws IOException {
-                UserLikeListBean bean = new UserLikeListBean();
-                bean = mGson.fromJson(response.body().string(), UserLikeListBean.class);
-                if (mLikeList != null)
-                    mLikeList.clear();
-                for (int i = 0; i < bean.ids.size(); i++) {
-                    MediaMetadataCompat mMediaMetadata = new MediaMetadataCompat.Builder()
-                            .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, bean.ids.get(i))
-                            .build();
-                    mLikeList.add(new MediaBrowserCompat.MediaItem(mMediaMetadata.getDescription(), MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
-                }
-            }
-        });
+//        mOkHttpUtil.get(App.getContext(), CloudMusicApi.USER_LISK_LIST + mToolUtil.readString("UserId") + "&timestamp=" + System.currentTimeMillis(), mToolUtil.readString("UserCookie"), mOkHttpUtil.SECOND / 60, new Callback() {
+//            @Override
+//            public void onFailure(Call p1, IOException p2) {
+//            }
+//
+//            @Override
+//            public void onResponse(Call p1, final Response response) throws IOException {
+//                UserLikeListBean bean = new UserLikeListBean();
+//                bean = mGson.fromJson(response.body().string(), UserLikeListBean.class);
+//                if (mLikeList != null)
+//                    mLikeList.clear();
+//                for (int i = 0; i < bean.ids.size(); i++) {
+//                    MediaMetadataCompat mMediaMetadata = new MediaMetadataCompat.Builder()
+//                            .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, bean.ids.get(i))
+//                            .build();
+//                    mLikeList.add(new MediaBrowserCompat.MediaItem(mMediaMetadata.getDescription(), MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+//                }
+//            }
+//        });
     }
 
     private void setMusicList(String id, String cookie, final boolean upMusicList) {
@@ -461,27 +463,28 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
                 upMusicList(false);
             }
         } else {
-            OkHttpUtil.get(App.getContext(), CloudMusicApi.SONG_LIST_DATA + id, cookie, mOkHttpUtil.DAY, new Callback() {
-                @Override
-                public void onFailure(Call p1, IOException p2) {
-                }
-
-                @Override
-                public void onResponse(Call p1, Response response) throws IOException {
-                    UserMusicListBean usermusicbean = new UserMusicListBean();
-                    usermusicbean = mGson.fromJson(response.body().string(), UserMusicListBean.class);
-                    mMusicList.clear();
-                    for (int i = 0; i < usermusicbean.playlist.tracks.size(); i++) {
-                        mMusicList.add(new MediaSessionCompat.QueueItem(new MediaMetadataCompat.Builder()
-                                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, usermusicbean.playlist.tracks.get(i).name)//歌名
-                                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, usermusicbean.playlist.tracks.get(i).ar.get(0).name)//歌手
-                                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, usermusicbean.playlist.tracks.get(i).al.picUrl)//歌曲封面
-                                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, usermusicbean.playlist.tracks.get(i).id)//歌曲id
-                                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, CloudMusicApi.MUSIC_PLAY + usermusicbean.playlist.tracks.get(i).id)
-                                .build().getDescription(), i));
-                    }
-                }
-            });
+            //todo java.lang.NullPointerException: Parameter specified as non-null is null: method okhttp3.Request$Builder.header, parameter value
+//            OkHttpUtil.get(App.getContext(), CloudMusicApi.SONG_LIST_DATA + id, cookie, mOkHttpUtil.DAY, new Callback() {
+//                @Override
+//                public void onFailure(Call p1, IOException p2) {
+//                }
+//
+//                @Override
+//                public void onResponse(Call p1, Response response) throws IOException {
+//                    UserMusicListBean usermusicbean = new UserMusicListBean();
+//                    usermusicbean = mGson.fromJson(response.body().string(), UserMusicListBean.class);
+//                    mMusicList.clear();
+//                    for (int i = 0; i < usermusicbean.playlist.tracks.size(); i++) {
+//                        mMusicList.add(new MediaSessionCompat.QueueItem(new MediaMetadataCompat.Builder()
+//                                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, usermusicbean.playlist.tracks.get(i).name)//歌名
+//                                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, usermusicbean.playlist.tracks.get(i).ar.get(0).name)//歌手
+//                                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, usermusicbean.playlist.tracks.get(i).al.picUrl)//歌曲封面
+//                                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, usermusicbean.playlist.tracks.get(i).id)//歌曲id
+//                                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, CloudMusicApi.MUSIC_PLAY + usermusicbean.playlist.tracks.get(i).id)
+//                                .build().getDescription(), i));
+//                    }
+//                }
+//            });
             mMediaSession.setQueue(mMusicList);
             if (upMusicList) {
                 upMusicList(false);

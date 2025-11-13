@@ -13,7 +13,11 @@ import com.wei.music.utils.RxSchedulers;
 
 import java.util.concurrent.Callable;
 
+import autodispose2.AutoDispose;
+import autodispose2.androidx.lifecycle.AndroidLifecycleScopeProvider;
+import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.core.SingleSource;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.functions.Consumer;
 import io.reactivex.rxjava3.functions.Function;
@@ -42,14 +46,43 @@ public class AppSessionManager {
                     }
                 }).subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
-                .subscribe(new Consumer<Resource<UserLoginBean>>() {
+                .flatMap(new Function<Resource<UserLoginBean>, SingleSource<String>>() {
                     @Override
-                    public void accept(Resource<UserLoginBean> userLoginBeanResource) throws Throwable {
+                    public SingleSource<String> apply(Resource<UserLoginBean> userLoginBeanResource) throws Throwable {
                         _userLoginLiveData.postValue(userLoginBeanResource);
+                        if (userLoginBeanResource.isSuccess()){
+                            UserLoginBean data = userLoginBeanResource.getData();
+                            return getUserSongs(data.getProfile().getUserId());
+                        }
+                        return Single.never();
+                    }
+                })
+                .subscribe(new Consumer<String>() {
+                    @Override
+                    public void accept(String s) throws Throwable {
+                        //get user song list result
+                        String s1 = s;
                     }
                 });
+
     }
 
+    /**
+     * response 404
+     * @param uid userId
+     */
+    private Single<String> getUserSongs(int uid) {
+        return NestedService.ServiceHolder.service
+                .getApi()
+                .getPlayList(uid)
+                .compose(RxSchedulers.applySchedulers())
+                .onErrorReturn(new Function<Throwable, String>() {
+                    @Override
+                    public String apply(Throwable throwable) throws Throwable {
+                        return "no impl api";
+                    }
+                }).firstOrError();
+    }
     public void login(String phone, String captcha) {
         _userLoginLiveData.postValue(new Resource.Loading<>());
 

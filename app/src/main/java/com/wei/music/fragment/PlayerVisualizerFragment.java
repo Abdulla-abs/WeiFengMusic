@@ -34,7 +34,7 @@ public class PlayerVisualizerFragment extends Fragment implements PlayerActivity
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        mRootView = inflater.inflate(R.layout.player_visualizer_fragment, null);
+        mRootView = inflater.inflate(R.layout.player_visualizer_fragment, container);
         mToolUtil = ToolUtil.getInstance();
         mGlideLoadUtils = GlideLoadUtils.getInstance();
         isVertical = (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);

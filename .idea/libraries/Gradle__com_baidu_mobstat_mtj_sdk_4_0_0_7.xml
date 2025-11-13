@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Gradle: com.baidu.mobstat:mtj-sdk:4.0.0.7" external-system-id="GRADLE">
-    <CLASSES>
-      <root url="jar://$PROJECT_DIR$/../../Android_Monitor/.gradle/caches/modules-2/files-2.1/com.baidu.mobstat/mtj-sdk/4.0.0.7/76a73d7125d9e69543bf7373d172b0666e02d064/mtj-sdk-4.0.0.7.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>
