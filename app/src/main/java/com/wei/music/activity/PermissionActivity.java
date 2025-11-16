@@ -51,4 +51,8 @@ public class PermissionActivity extends BaseFinishActivity implements View.OnCli
         }
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+    }
 }

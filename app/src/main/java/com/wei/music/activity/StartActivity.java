@@ -2,7 +2,6 @@ package com.wei.music.activity;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.os.Build;
 import android.os.Bundle;
 
 import com.wei.music.R;
@@ -18,9 +17,6 @@ import android.Manifest;
 import java.util.Arrays;
 
 import android.graphics.Color;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 
@@ -55,9 +51,7 @@ public class StartActivity extends AppCompatActivity {
     };
     private MediaBrowserCompat mMediaBrowser;
     private MediaControllerCompat mMediaController;
-    private final static int WHAT_START = 1;
     private final int mRequestPermissionCode = 100;
-    private Handler handler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,36 +59,26 @@ public class StartActivity extends AppCompatActivity {
         setContentView(R.layout.activity_start);
         ToolUtil.setStatusBarColor(this, Color.TRANSPARENT, Color.TRANSPARENT, true);
 
-        initHandler();
         initMediaBrowser();
-        requestPermission23();
+        init();
     }
 
-    private void initHandler() {
-        handler = new Handler(Looper.getMainLooper()) {
-            @Override
-            public void handleMessage(@NonNull Message msg) {
-                if (msg.what == WHAT_START) {
-                    if (MMKVUtils.isFirstRun()) {
-                        MMKVUtils.appRun();
-                    } else {
-                        if (mMediaController != null && MMKVUtils.hasLastSongData()) {
-                            Bundle bundle = new Bundle();
-                            bundle.putString("id", String.valueOf(MMKVUtils.lastSongListId()));
-                            bundle.putString("cookie", MMKVUtils.getUserCookie());
-                            mMediaController.getTransportControls()
-                                    .sendCustomAction(MusicService.ACTION_START_MUSIC, bundle);
-                            startActivity(new Intent(StartActivity.this, MainActivity.class));
-                            finish();
-                        } else {
-                            startActivity(new Intent(StartActivity.this, MainActivity.class));
-                            finish();
-                        }
-                    }
-
-                }
+    private void init(){
+        if (MMKVUtils.isFirstRun()){
+            MMKVUtils.appRun();
+            String[] permissions = checkPermissions();
+            requestPermission23(permissions);
+        }else {
+            if (mMediaController != null && MMKVUtils.hasCurrentSongList()) {
+                Bundle bundle = new Bundle();
+                bundle.putString(MusicService.ACTION_SONG_LIST, MMKVUtils.currentSongDataStr());
+                bundle.putString("cookie", MMKVUtils.getUserCookie());
+                mMediaController.getTransportControls()
+                        .sendCustomAction(MusicService.ACTION_INIT_CURRENT_SONG, bundle);
             }
-        };
+            startActivity(new Intent(StartActivity.this, MainActivity.class));
+            finish();
+        }
     }
 
     private void initMediaBrowser() {
@@ -107,7 +91,7 @@ public class StartActivity extends AppCompatActivity {
         mMediaBrowser.connect();
     }
 
-    private void requestPermission23() {
+    private String[] checkPermissions(){
         final String[] permissions = new String[]{
                 Manifest.permission.RECORD_AUDIO,
                 Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -116,16 +100,15 @@ public class StartActivity extends AppCompatActivity {
         };
 
         // 使用 Stream 过滤出没有授权的权限
-        String[] unauthorizedPermissions = Arrays.stream(permissions)
+       return Arrays.stream(permissions)
                 .filter(permission -> ContextCompat.checkSelfPermission(this, permission)
                         != PackageManager.PERMISSION_GRANTED)
                 .toArray(String[]::new);
+    }
 
-
+    private void requestPermission23(String[] unauthorizedPermissions) {
         if (unauthorizedPermissions.length != 0) {
             ActivityCompat.requestPermissions(this, unauthorizedPermissions, mRequestPermissionCode);
-        } else {
-            handler.sendEmptyMessage(WHAT_START);
         }
     }
 
@@ -141,11 +124,11 @@ public class StartActivity extends AppCompatActivity {
                     break;
                 }
             }
-            if (hasPermissionDismiss) {
-                showPermissionDialog();
-            } else {
-                handler.sendEmptyMessage(WHAT_START);
-            }
+//            if (hasPermissionDismiss) {
+//                showPermissionDialog();
+//            }
+            startActivity(new Intent(StartActivity.this, MainActivity.class));
+            finish();
         }
     }
 
@@ -153,11 +136,16 @@ public class StartActivity extends AppCompatActivity {
         startActivity(new Intent(this, PermissionActivity.class));
     }
 
+//    @Override
+//    protected void onNewIntent(Intent intent) {
+//        super.onNewIntent(intent);
+//        startActivity(new Intent(StartActivity.this, MainActivity.class));
+//        finish();
+//    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        handler.removeCallbacksAndMessages(null);
-        handler = null;
         connectionCallback = null;
     }
 }

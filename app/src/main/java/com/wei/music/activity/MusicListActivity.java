@@ -19,6 +19,8 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.blankj.utilcode.util.GsonUtils;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.animation.GlideAnimation;
 import com.bumptech.glide.request.target.SimpleTarget;
@@ -26,14 +28,21 @@ import com.google.android.material.appbar.AppBarLayout;
 import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Consumer;
+
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Response;
 import android.widget.FrameLayout;
-import android.widget.RelativeLayout;
+
 import com.wei.music.R;
 import com.wei.music.adapter.MusicListAdapter;
+import com.wei.music.bean.SongListBean;
+import com.wei.music.service.controller.MusicController;
+import com.wei.music.utils.AudioFileFetcher;
 import com.wei.music.utils.GlideLoadUtils;
+import com.wei.music.utils.MMKVUtils;
 import com.wei.music.utils.ToolUtil;
 import com.wei.music.utils.OkHttpUtil;
 import com.wei.music.view.MarqueeView;
@@ -46,6 +55,7 @@ import com.wei.music.utils.AppBarStateChangeListener;
 
 public class MusicListActivity extends AppCompatActivity implements View.OnClickListener, MusicListAdapter.OnItemClick {
 
+    public static final String INTENT_SONG_LIST = "IntentSongList";
     private LinearLayout mPlayBarRoot;
     private FrameLayout mPlayBarView;
     private ImageView mMusicListBackground, mMusicListIcon, mPlayBarIcon, mPlayBarPause, mPlayBarList;
@@ -94,7 +104,14 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
                 mMediaController = new MediaControllerCompat(MusicListActivity.this, token);
             } catch (RemoteException e) {}
             mMediaController.registerCallback(mMediaCallback);
-            initData(mToolUtil.readString("SongListId"), mToolUtil.readString("UserCookie"));
+            Optional.ofNullable(GsonUtils.fromJson(getIntent().getStringExtra(INTENT_SONG_LIST),SongListBean.class))
+                    .ifPresent(new Consumer<SongListBean>() {
+                        @Override
+                        public void accept(SongListBean songListBean) {
+                            initData(songListBean, mToolUtil.readString("UserCookie"));
+                        }
+                    });
+
         }
     };
 
@@ -162,36 +179,37 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
         }
     }
 
-    public void initData(final String id, final String cookie) {
-        mMusicListName.setText(mToolUtil.readString("SongListName"));
-        mGlideLoadUtils.setRound(MusicListActivity.this, mToolUtil.readString("SongListIcon"), 8,  mMusicListIcon);
+    public void initData(final SongListBean songListBean, final String cookie) {
+        mMusicListName.setText(songListBean.getTitle());
+        GlideLoadUtils.setRound(MusicListActivity.this, mToolUtil.readString("SongListIcon"), 8,  mMusicListIcon);
         getBackBitmap();
+
         Bundle bundle = new Bundle();
-        bundle.putString("id", id);
+        bundle.putString(MusicService.ACTION_SONG_LIST, getIntent().getStringExtra(INTENT_SONG_LIST));
         bundle.putString("cookie", cookie);
-        mMediaController.getTransportControls().sendCustomAction(MusicService.ACTION_PLAY_MUSIC, bundle);
-        if ("-1".equals(id)){
-
-        }else {
-            OkHttpUtil.get(this, CloudMusicApi.SONG_LIST_DATA + id, cookie, mOkHttpUtil.DAY, new Callback() {
-
-                @Override
-                public void onFailure(Call p1, IOException p2) {
-                }
-
-                @Override
-                public void onResponse(Call p1, Response response) throws IOException {
-                    UserMusicListBean usermusicbean = new UserMusicListBean();
-                    usermusicbean = mGson.fromJson(response.body().string(), UserMusicListBean.class);
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            //mMusicListMsg.setText(usermusicbean.playlist.description);
-                        }
-                    });
-                }
-            });
-        }
+        mMediaController.getTransportControls().sendCustomAction(MusicService.ACTION_CHANGE_SONG_LIST, bundle);
+//        if ("-1".equals(id)){
+//
+//        }else {
+//            OkHttpUtil.get(this, CloudMusicApi.SONG_LIST_DATA + id, cookie, mOkHttpUtil.DAY, new Callback() {
+//
+//                @Override
+//                public void onFailure(Call p1, IOException p2) {
+//                }
+//
+//                @Override
+//                public void onResponse(Call p1, Response response) throws IOException {
+//                    UserMusicListBean usermusicbean = new UserMusicListBean();
+//                    usermusicbean = mGson.fromJson(response.body().string(), UserMusicListBean.class);
+//                    runOnUiThread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            //mMusicListMsg.setText(usermusicbean.playlist.description);
+//                        }
+//                    });
+//                }
+//            });
+//        }
 
     }
 

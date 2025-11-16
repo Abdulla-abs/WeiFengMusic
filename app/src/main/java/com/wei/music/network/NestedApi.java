@@ -24,4 +24,5 @@ public interface NestedApi {
 
     @GET("/user/playlist")
     Observable<String> getPlayList(@Query("uid") Integer uid);
+
 }

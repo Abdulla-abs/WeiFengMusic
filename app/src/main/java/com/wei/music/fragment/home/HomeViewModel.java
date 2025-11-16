@@ -3,19 +3,14 @@ package com.wei.music.fragment.home;
 import android.content.Context;
 import android.text.TextUtils;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.ViewModel;
 
-import com.wei.music.AppSessionManager;
 import com.wei.music.bean.BaseResp;
 import com.wei.music.bean.SongListBean;
-import com.wei.music.bean.UserLoginBean;
-import com.wei.music.network.NestedService;
+import com.wei.music.network.ApiService;
 import com.wei.music.utils.AudioFileFetcher;
-import com.wei.music.utils.MMKVUtils;
 import com.wei.music.utils.Resource;
 import com.wei.music.utils.RxSchedulers;
 import com.wei.music.utils.ViewModelScopeProviderUtil;
@@ -25,10 +20,7 @@ import java.util.List;
 import java.util.Optional;
 
 import autodispose2.AutoDispose;
-import autodispose2.androidx.lifecycle.AndroidLifecycleScopeProvider;
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Single;
-import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.functions.Consumer;
 import io.reactivex.rxjava3.functions.Function;
 import io.reactivex.rxjava3.schedulers.Schedulers;
@@ -49,8 +41,8 @@ public class HomeViewModel extends ViewModelScopeProviderUtil.ScopedViewModel {
             return;
         }
 
-        NestedService.ServiceHolder.service
-                .getApi()
+        ApiService.ServiceHolder.service
+                .getNestedApi()
                 .requestCaptcha(phone, "86")
                 .compose(RxSchedulers.applySchedulers())
                 .onErrorReturn(new Function<Throwable, BaseResp<Boolean>>() {

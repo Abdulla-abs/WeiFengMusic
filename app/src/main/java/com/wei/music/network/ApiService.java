@@ -7,7 +7,6 @@ import com.wei.music.bean.UserLoginBean;
 import com.wei.music.utils.Resource;
 
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -25,42 +24,63 @@ import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
-public class NestedService {
+public class ApiService {
 
-    private static final String BASE_URL = "https://apis.netstart.cn/music/";
+    private static final String NESTED_BASE_URL = "https://apis.netstart.cn/music/";
+    public static final String WEI_BASE_URL = "https://netease-cloud-music-api-wei.vercel.app/";
 
-    private final NestedApi api;
+    private final NestedApi nestedApi;
+    private final ServiceApi weiApi;
 
-    private NestedService() {
-        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
-        loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
-
-        CookieJar cookieJar = new PersistentCookieJar();
-
-        OkHttpClient defaultClient = new OkHttpClient.Builder()
-                .addInterceptor(new DefaultInterceptor())
-                .addInterceptor(loggingInterceptor)
-                .addInterceptor(new CookieInterceptor())
-                .cookieJar(cookieJar)
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .build();
-
-        api = new Retrofit.Builder()
-                .baseUrl(BASE_URL)
-                .client(defaultClient)
+    private ApiService() {
+        nestedApi = new Retrofit.Builder()
+                .baseUrl(NESTED_BASE_URL)
+                .client(getDefOkhttpClient())
                 .addConverterFactory(GsonConverterFactory.create())
                 .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
                 .build()
                 .create(NestedApi.class);
+
+        weiApi = new Retrofit.Builder()
+                .baseUrl(WEI_BASE_URL)
+                .client(getDefOkhttpClient())
+                .addConverterFactory(GsonConverterFactory.create())
+                .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
+                .build()
+                .create(ServiceApi.class);
     }
 
-    public NestedApi getApi() {
-        return api;
+    public NestedApi getNestedApi() {
+        return nestedApi;
+    }
+
+    public ServiceApi getWeiApi() {
+        return weiApi;
     }
 
     public static class ServiceHolder {
-        public static NestedService service = new NestedService();
+        public static ApiService service = new ApiService();
+    }
+
+    private OkHttpClient getDefOkhttpClient(){
+        return new OkHttpClient.Builder()
+                .addInterceptor(new DefaultInterceptor())
+                .addInterceptor(getLoggingInterceptor())
+                .addInterceptor(new CookieInterceptor())
+                .cookieJar(getCookieJar())
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .build();
+    }
+
+    private HttpLoggingInterceptor getLoggingInterceptor(){
+        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
+        loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+        return loggingInterceptor;
+    }
+
+    private CookieJar getCookieJar(){
+        return new PersistentCookieJar();
     }
 
     private static class DefaultInterceptor implements Interceptor {

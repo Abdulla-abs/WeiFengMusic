@@ -25,15 +25,19 @@ import android.widget.Toast;
 import androidx.core.app.NotificationCompat;
 import androidx.media.MediaBrowserServiceCompat;
 
+import com.blankj.utilcode.util.GsonUtils;
+import com.blankj.utilcode.util.LogUtils;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.animation.GlideAnimation;
 import com.bumptech.glide.request.target.SimpleTarget;
-import com.google.gson.Gson;
 import com.wei.music.App;
 import com.wei.music.R;
-import com.wei.music.bean.UserMusicListBean;
+import com.wei.music.bean.SongListBean;
+import com.wei.music.service.controller.LocalSongDataSource;
+import com.wei.music.service.controller.MusicDataSource;
+import com.wei.music.service.controller.SongType;
 import com.wei.music.utils.AudioFileFetcher;
-import com.wei.music.utils.CloudMusicApi;
+import com.wei.music.utils.MMKVUtils;
 import com.wei.music.utils.OkHttpUtil;
 import com.wei.music.utils.ToolUtil;
 
@@ -41,19 +45,21 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.Response;
-
-import com.wei.music.bean.UserLikeListBean;
+import abbas.fun.myutil.If;
+import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 
 public class MusicService extends MediaBrowserServiceCompat implements ServiceCallback {
 
-    public static final String ACTION_START_MUSIC = "START_MUSIC";
+    public static final String ACTION_INIT_CURRENT_SONG = "INIT_CURRENT_SONG";
+    public static final String ACTION_CHANGE_SONG_LIST = "INIT_CURRENT_SONG";
+
     public static final String ACTION_LIKE_MUSIC = "LIKE_MUSIC";
-    public static final String ACTION_PLAY_MUSIC = "PLAY_MUSIC";
     public static final String ACTION_PLAY_MODE = "PLAY_MODE";
+    public static final String ACTION_MUSIC_ID = "ACTION_MUSIC_ID";
 
     private static final int NoticeId = 2969;
     private static final String NoticeName = "WeiFengMusic";
@@ -71,6 +77,26 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
 
     private OkHttpUtil mOkHttpUtil;
     private ToolUtil mToolUtil;
+
+    public void onInitMusicList(List<MediaSessionCompat.QueueItem> newMusicList) {
+        mMusicList = newMusicList;
+        mMediaSession.setQueue(mMusicList);
+        upMusicList(false);
+    }
+
+    public void onChangeSongList(List<MediaSessionCompat.QueueItem> queueItems) {
+        mMusicList = queueItems;
+        mMediaSession.setQueue(mMusicList);
+        upMusicList(false);
+    }
+
+    public void onChangePlayModel(int playModel) {
+        mPlayModel = playModel;
+        MMKVUtils.savePlayModel(playModel);
+        Bundle bundle = new Bundle();
+        bundle.putInt("model", mPlayModel);
+        mMediaSession.setExtras(bundle);
+    }
 
     private class SeekBarThread implements Runnable {
         @Override
@@ -109,19 +135,23 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
     private PendingIntent nextAction;
     private MediaServiceReceiver mMediaServiceRec;
 
-    private Gson mGson = new Gson();
-
     private List<MediaSessionCompat.QueueItem> mLastMusicList = new ArrayList<>();
 
     private List<MediaSessionCompat.QueueItem> mMusicList = new ArrayList<>();
     private List<MediaBrowserCompat.MediaItem> mediaItems = new ArrayList<>();
     private List<MediaBrowserCompat.MediaItem> mLikeList = new ArrayList<>();
 
+    private MusicDataSource localDataSource;
+    private MusicDataSource remoteDataSource;
+
+
     @Override
     public void onCreate() {
         super.onCreate();
         mToolUtil = ToolUtil.getInstance();
-        mOkHttpUtil = OkHttpUtil.getInstance();
+
+        localDataSource = new LocalSongDataSource();
+        remoteDataSource = new LocalSongDataSource();
 
         initMediaPlayer();
         initMediaSeesion();
@@ -367,32 +397,145 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         @Override
         public void onCustomAction(String action, Bundle extras) {
             super.onCustomAction(action, extras);
-            String id = extras.getString("id");
-            switch (action) {
 
-                case ACTION_START_MUSIC:
-                    mPosition = mToolUtil.readInt("MusicPosition");
-                    setMusicList(id, extras.getString("cookie"), true);
-                    if (!"-1".equals(id)) {
-                        getLikeList();
-                    }
-                    break;
-                case ACTION_LIKE_MUSIC:
-                    unLikeMusic(id, extras.getBoolean("is"));
-                    break;
-                case ACTION_PLAY_MUSIC:
-                    setMusicList(id, extras.getString("cookie"), false);
-                    break;
-                case ACTION_PLAY_MODE:
-                    mPlayModel = extras.getInt("model");
-                    mToolUtil.write("PlayModel", mPlayModel);
-                    Bundle bundle = new Bundle();
-                    bundle.putInt("model", mPlayModel);
-                    mMediaSession.setExtras(bundle);
-                    break;
-            }
+            If.of(action)
+                    .is(ACTION_INIT_CURRENT_SONG, new Consumer<String>() {
+                        @Override
+                        public void accept(String s) {
+                            String songListData = extras.getString(ACTION_SONG_LIST);
+                            SongListBean songListBean = GsonUtils.fromJson(songListData, SongListBean.class);
+                            if (songListBean == null) {
+                                LogUtils.e("MusicService action decode song list error");
+                                return;
+                            }
+                            If.of(songListBean)
+                                    .mapper(new Function<SongListBean, SongType>() {
+                                        @Override
+                                        public SongType apply(SongListBean songListBean) {
+                                            if (songListBean.getId() == AudioFileFetcher.LOCAL_SONG_LIST_ID) {
+                                                return SongType.LOCAL;
+                                            }
+                                            return SongType.REMOTE;
+                                        }
+                                    })
+                                    .is(SongType.LOCAL, new abbas.fun.myutil.Consumer<SongListBean, SongType>() {
+                                        @Override
+                                        public void accept(SongListBean songListBean, SongType songType) {
+                                            Disposable subscribe = localDataSource.resetMusicSet(songListBean)
+                                                    .subscribe(new io.reactivex.rxjava3.functions.Consumer<List<MediaSessionCompat.QueueItem>>() {
+                                                        @Override
+                                                        public void accept(List<MediaSessionCompat.QueueItem> queueItems) throws Throwable {
+                                                            onInitMusicList(queueItems);
+                                                        }
+                                                    });
+                                        }
+                                    })
+                                    .is(SongType.REMOTE, new abbas.fun.myutil.Consumer<SongListBean, SongType>() {
+                                        @Override
+                                        public void accept(SongListBean songListBean, SongType songType) {
+                                            Disposable subscribe = remoteDataSource.resetMusicSet(songListBean)
+                                                    .subscribeOn(Schedulers.io())
+                                                    .observeOn(Schedulers.io())
+                                                    .subscribe(new io.reactivex.rxjava3.functions.Consumer<List<MediaSessionCompat.QueueItem>>() {
+                                                        @Override
+                                                        public void accept(List<MediaSessionCompat.QueueItem> queueItems) throws Throwable {
+                                                            onInitMusicList(queueItems);
+                                                        }
+                                                    });
+                                        }
+                                    })
+                                    .orElse(new abbas.fun.myutil.Consumer<SongListBean, SongType>() {
+                                        @Override
+                                        public void accept(SongListBean songListBean, SongType songType) {
+                                            LogUtils.e("Another Patch...");
+                                        }
+                                    })
+                                    .end();
+                        }
+                    })
+                    .is(ACTION_LIKE_MUSIC, new Consumer<String>() {
+                        @Override
+                        public void accept(String s) {
+                            boolean like = extras.getBoolean(MusicService.ACTION_LIKE_SONG);
+                            int musicId = extras.getInt(MusicService.ACTION_MUSIC_ID);
+                            if (musicId == 0) return;
+                            Disposable subscribe = remoteDataSource.changeMusicLikeState(like, musicId)
+                                    .subscribe(new io.reactivex.rxjava3.functions.Consumer<Boolean>() {
+                                        @Override
+                                        public void accept(Boolean aBoolean) throws Throwable {
+                                            //TODO NOT IMPLEMENT
+                                        }
+                                    });
+                        }
+                    })
+                    .is(ACTION_CHANGE_SONG_LIST, new Consumer<String>() {
+                        @Override
+                        public void accept(String s) {
+                            String songListData = extras.getString(ACTION_SONG_LIST);
+                            SongListBean songListBean = GsonUtils.fromJson(songListData, SongListBean.class);
+                            if (songListBean == null) {
+                                LogUtils.e("MusicService action decode song list error");
+                                return;
+                            }
+                            If.of(songListBean)
+                                    .mapper(new Function<SongListBean, SongType>() {
+                                        @Override
+                                        public SongType apply(SongListBean songListBean) {
+                                            if (songListBean.getId() == AudioFileFetcher.LOCAL_SONG_LIST_ID) {
+                                                return SongType.LOCAL;
+                                            }
+                                            return SongType.REMOTE;
+                                        }
+                                    })
+                                    .is(SongType.LOCAL, new abbas.fun.myutil.Consumer<SongListBean, SongType>() {
+                                        @Override
+                                        public void accept(SongListBean songListBean, SongType songType) {
+                                            Disposable subscribe = localDataSource.resetMusicSet(songListBean)
+                                                    .subscribe(new io.reactivex.rxjava3.functions.Consumer<List<MediaSessionCompat.QueueItem>>() {
+                                                        @Override
+                                                        public void accept(List<MediaSessionCompat.QueueItem> queueItems) throws Throwable {
+                                                            onChangeSongList(queueItems);
+                                                        }
+                                                    });
+                                        }
+                                    })
+                                    .is(SongType.REMOTE, new abbas.fun.myutil.Consumer<SongListBean, SongType>() {
+                                        @Override
+                                        public void accept(SongListBean songListBean, SongType songType) {
+                                            Disposable subscribe = remoteDataSource.resetMusicSet(songListBean)
+                                                    .subscribeOn(Schedulers.io())
+                                                    .observeOn(Schedulers.io())
+                                                    .subscribe(new io.reactivex.rxjava3.functions.Consumer<List<MediaSessionCompat.QueueItem>>() {
+                                                        @Override
+                                                        public void accept(List<MediaSessionCompat.QueueItem> queueItems) throws Throwable {
+                                                            onChangeSongList(queueItems);
+                                                        }
+                                                    });
+                                        }
+                                    })
+                                    .orElse(new abbas.fun.myutil.Consumer<SongListBean, SongType>() {
+                                        @Override
+                                        public void accept(SongListBean songListBean, SongType songType) {
+                                            LogUtils.e("Another Patch...");
+                                        }
+                                    })
+                                    .end();
+
+                        }
+                    })
+                    .is(ACTION_PLAY_MODE, new Consumer<String>() {
+                        @Override
+                        public void accept(String s) {
+                            int playModel = extras.getInt(ACTION_PLAY_MODE);
+                            onChangePlayModel(playModel);
+                        }
+                    })
+                    .end();
         }
     };
+
+    public static final String ACTION_SONG_LIST = "SONG_LIST_DATA";
+    public static final String ACTION_LIKE_SONG = "LIKE_SONG";
 
     private void upMusicList(boolean isPlay) {
         if (mLastMusicList != null) {
@@ -401,21 +544,6 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         }
         mLastMusicList = new ArrayList<>(mMusicList);
         setMediaPlayer(isPlay);
-    }
-
-    private void unLikeMusic(String id, final boolean is) {
-        mOkHttpUtil.get(App.getContext(), (is ? CloudMusicApi.MUSIC_LIKE : CloudMusicApi.MUSIC_UN_LIKE) + id, mToolUtil.readString("UserCookie"), mOkHttpUtil.SECOND / 60, new Callback() {
-            @Override
-            public void onFailure(Call p1, IOException p2) {
-            }
-
-            @Override
-            public void onResponse(Call p1, Response response) throws IOException {
-                if (response.body().string().contains("200")) {
-                    getLikeList();
-                }
-            }
-        });
     }
 
     private void getLikeList() {
@@ -438,60 +566,6 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
 //                }
 //            }
 //        });
-    }
-
-    private void setMusicList(String id, String cookie, final boolean upMusicList) {
-        if ("-1".equals(id)) {
-            if (AudioFileFetcher.cachedLocalSongsList.isEmpty()) return;
-            for (int i = 0; i < AudioFileFetcher.cachedLocalSongsList.size(); i++) {
-                mMusicList.add(
-                        new MediaSessionCompat.QueueItem(
-                                new MediaMetadataCompat.Builder()
-                                        .putString(MediaMetadataCompat.METADATA_KEY_TITLE, AudioFileFetcher.cachedLocalSongsList.get(i).getName())//歌名
-                                        .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, AudioFileFetcher.cachedLocalSongsList.get(i).getArtist())//歌手
-                                        .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, AudioFileFetcher.cachedLocalSongsList.get(i).getAlbum())//歌曲封面
-                                        .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, AudioFileFetcher.cachedLocalSongsList.get(i).getId() + "")//歌曲id
-                                        .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, AudioFileFetcher.cachedLocalSongsList.get(i).getPath())
-                                        .build()
-                                        .getDescription(),
-                                i
-                        )
-                );
-            }
-            mMediaSession.setQueue(mMusicList);
-            if (upMusicList) {
-                upMusicList(false);
-            }
-        } else {
-            //todo java.lang.NullPointerException: Parameter specified as non-null is null: method okhttp3.Request$Builder.header, parameter value
-//            OkHttpUtil.get(App.getContext(), CloudMusicApi.SONG_LIST_DATA + id, cookie, mOkHttpUtil.DAY, new Callback() {
-//                @Override
-//                public void onFailure(Call p1, IOException p2) {
-//                }
-//
-//                @Override
-//                public void onResponse(Call p1, Response response) throws IOException {
-//                    UserMusicListBean usermusicbean = new UserMusicListBean();
-//                    usermusicbean = mGson.fromJson(response.body().string(), UserMusicListBean.class);
-//                    mMusicList.clear();
-//                    for (int i = 0; i < usermusicbean.playlist.tracks.size(); i++) {
-//                        mMusicList.add(new MediaSessionCompat.QueueItem(new MediaMetadataCompat.Builder()
-//                                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, usermusicbean.playlist.tracks.get(i).name)//歌名
-//                                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, usermusicbean.playlist.tracks.get(i).ar.get(0).name)//歌手
-//                                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, usermusicbean.playlist.tracks.get(i).al.picUrl)//歌曲封面
-//                                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, usermusicbean.playlist.tracks.get(i).id)//歌曲id
-//                                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, CloudMusicApi.MUSIC_PLAY + usermusicbean.playlist.tracks.get(i).id)
-//                                .build().getDescription(), i));
-//                    }
-//                }
-//            });
-            mMediaSession.setQueue(mMusicList);
-            if (upMusicList) {
-                upMusicList(false);
-            }
-        }
-
-
     }
 
     private void setMusicMetadata() {
@@ -587,6 +661,7 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         }
         unregisterReceiver(mMediaServiceRec);
     }
+
     @Override
     public void onAudioBecomingNoisy() {
         mMediaSession.getController().getTransportControls().pause();

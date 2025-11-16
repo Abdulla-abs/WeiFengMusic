@@ -12,11 +12,12 @@ import java.util.List;
 
 public class AudioFileFetcher {
 
-    public static SongListBean cachedLocalSongs = new SongListBean(
+    public static final int LOCAL_SONG_LIST_ID = -1;
+    public final static SongListBean cachedLocalSongs = new SongListBean(
             "本地歌曲歌单",
-            "0",
+            0,
             "",
-            "-1"
+            LOCAL_SONG_LIST_ID
     );
     public static List<AudioFile> cachedLocalSongsList = Collections.emptyList();
 
@@ -71,7 +72,7 @@ public class AudioFileFetcher {
             e.printStackTrace();
         }
 
-        cachedLocalSongs.setNumber(audioFiles.size()+"");
+        cachedLocalSongs.setSize(audioFiles.size());
         cachedLocalSongsList = audioFiles;
 
         return audioFiles;

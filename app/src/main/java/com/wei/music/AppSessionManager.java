@@ -6,16 +6,13 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.wei.music.bean.UserLoginBean;
-import com.wei.music.network.NestedService;
+import com.wei.music.network.ApiService;
 import com.wei.music.utils.MMKVUtils;
 import com.wei.music.utils.Resource;
 import com.wei.music.utils.RxSchedulers;
 
 import java.util.concurrent.Callable;
 
-import autodispose2.AutoDispose;
-import autodispose2.androidx.lifecycle.AndroidLifecycleScopeProvider;
-import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleSource;
 import io.reactivex.rxjava3.disposables.Disposable;
@@ -72,8 +69,8 @@ public class AppSessionManager {
      * @param uid userId
      */
     private Single<String> getUserSongs(int uid) {
-        return NestedService.ServiceHolder.service
-                .getApi()
+        return ApiService.ServiceHolder.service
+                .getNestedApi()
                 .getPlayList(uid)
                 .compose(RxSchedulers.applySchedulers())
                 .onErrorReturn(new Function<Throwable, String>() {
@@ -91,8 +88,8 @@ public class AppSessionManager {
             return;
         }
 
-        Disposable subscribe = NestedService.ServiceHolder.service
-                .getApi()
+        Disposable subscribe = ApiService.ServiceHolder.service
+                .getNestedApi()
                 .captchaLogin(phone, captcha)
                 .compose(RxSchedulers.applySchedulers())
                 .onErrorReturn(new Function<Throwable, UserLoginBean>() {

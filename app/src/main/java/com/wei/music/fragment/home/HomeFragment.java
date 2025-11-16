@@ -20,6 +20,7 @@ import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
+import com.blankj.utilcode.util.GsonUtils;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.wei.music.AppSessionManager;
 import com.wei.music.R;
@@ -29,18 +30,12 @@ import com.wei.music.bean.SongListBean;
 import com.wei.music.bean.UserLoginBean;
 import com.wei.music.databinding.HomeFragmentBinding;
 import com.wei.music.databinding.LayoutLoginCaptchaBinding;
-import com.wei.music.network.NestedService;
 import com.wei.music.utils.MMKVUtils;
 import com.wei.music.utils.Resource;
-import com.wei.music.utils.RxSchedulers;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
-import autodispose2.AutoDispose;
-import autodispose2.androidx.lifecycle.AndroidLifecycleScopeProvider;
-import io.reactivex.rxjava3.functions.Consumer;
 
 public class HomeFragment extends Fragment {
     private static final String TAG = "HomeFragment";
@@ -88,9 +83,7 @@ public class HomeFragment extends Fragment {
 
             @Override
             public void onSongListClick(SongListBean data, View image, View title, View msg) {
-                MMKVUtils.putString("SongListId", data.getId());
-                MMKVUtils.putString("SongListName", data.getTitle());
-                MMKVUtils.putString("SongListIcon", data.getImage());
+                MMKVUtils.saveCurrentSongList(data);
                 View playBar = requireActivity().findViewById(R.id.playbar_view);
                 Intent intent = new Intent(getActivity(), MusicListActivity.class);
                 Bundle bundle = ActivityOptionsCompat.makeSceneTransitionAnimation(
@@ -99,6 +92,7 @@ public class HomeFragment extends Fragment {
                         Pair.create(title, "song_title"),
                         Pair.create(msg, "song_msg"),
                         Pair.create(playBar, "song_playbar")).toBundle();
+                intent.putExtra(MusicListActivity.INTENT_SONG_LIST, GsonUtils.toJson(data));
                 startActivity(intent, bundle);
             }
         });
@@ -143,7 +137,9 @@ public class HomeFragment extends Fragment {
             public void onChanged(Resource<UserLoginBean> userLoginBeanResource) {
                 if (userLoginBeanResource instanceof Resource.Success) {
                     progressDialog.dismiss();
-                    mLoginDialog.dismiss();
+                    if (mLoginDialog != null){
+                        mLoginDialog.dismiss();
+                    }
                     initUser(userLoginBeanResource.getData());
                 } else if (userLoginBeanResource instanceof Resource.Loading) {
                     progressDialog.show();

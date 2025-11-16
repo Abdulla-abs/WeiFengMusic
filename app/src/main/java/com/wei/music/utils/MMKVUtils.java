@@ -3,11 +3,11 @@ package com.wei.music.utils;
 import androidx.annotation.Nullable;
 
 import com.blankj.utilcode.util.GsonUtils;
-import com.google.gson.Gson;
 import com.tencent.mmkv.MMKV;
+import com.wei.music.bean.SongListBean;
 import com.wei.music.bean.UserLoginBean;
 
-import java.security.PublicKey;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -298,34 +298,45 @@ public class MMKVUtils {
         mmkv.encode("isFirstFun", false);
     }
 
-    public static void putUser(UserLoginBean userLoginBean){
+    public static void putUser(UserLoginBean userLoginBean) {
         String userStr = GsonUtils.toJson(userLoginBean, UserLoginBean.class);
-        mmkv.encode("userLoginData",userStr);
+        mmkv.encode("userLoginData", userStr);
     }
 
-    public static void putUser(String userLoginStr){
-        mmkv.encode("userLoginData",userLoginStr);
+    public static void putUser(String userLoginStr) {
+        mmkv.encode("userLoginData", userLoginStr);
     }
 
-    public static UserLoginBean getUserLoginBean(){
+    public static UserLoginBean getUserLoginBean() {
         String userLoginData = mmkv.decodeString("userLoginData");
         try {
-           return GsonUtils.fromJson(userLoginData, UserLoginBean.class);
+            return GsonUtils.fromJson(userLoginData, UserLoginBean.class);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static int lastSongListId() {
-        return mmkv.decodeInt("SongListId");
+    public static final String CURRENT_SONG_LIST = "CurrentSongList";
+
+    public static @Nullable SongListBean currentSongData() {
+        Optional<String> currentSongList = Optional.ofNullable(mmkv.decodeString(CURRENT_SONG_LIST));
+        return currentSongList.map(s -> GsonUtils.fromJson(s, SongListBean.class)).orElse(null);
+    }
+
+    public static @Nullable String currentSongDataStr() {
+        return mmkv.decodeString(CURRENT_SONG_LIST);
+    }
+
+    public static void saveCurrentSongList(SongListBean data) {
+        mmkv.putString(CURRENT_SONG_LIST, GsonUtils.toJson(data));
     }
 
     public static int lastSongListPos() {
         return mmkv.decodeInt("MusicPosition");
     }
 
-    public static boolean hasLastSongData() {
-        return lastSongListId() > 0;
+    public static boolean hasCurrentSongList() {
+        return currentSongData() != null;
     }
 
     public static void putUserCookie(String cookie) {
@@ -335,5 +346,12 @@ public class MMKVUtils {
     @Nullable
     public static String getUserCookie() {
         return mmkv.decodeString("UserCookie");
+    }
+
+
+    public static final String PLAY_MODEL = "PLAY_MODEL";
+
+    public static void savePlayModel(int playModel) {
+        mmkv.putInt(PLAY_MODEL, playModel);
     }
 }

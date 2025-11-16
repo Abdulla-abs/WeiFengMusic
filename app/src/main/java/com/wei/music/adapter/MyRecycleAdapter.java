@@ -47,7 +47,7 @@ public class MyRecycleAdapter extends ListAdapter<SongListBean, RecyclerView.Vie
         @Override
         public boolean areContentsTheSame(@NonNull SongListBean oldItem, @NonNull SongListBean newItem) {
             return oldItem.getTitle().equals(newItem.getTitle()) &&
-                    oldItem.getNumber().equals(newItem.getNumber()) &&
+                    oldItem.getSize() == newItem.getSize() &&
                     Objects.equals(oldItem.getImage(), newItem.getImage());
         }
     };
@@ -116,7 +116,7 @@ public class MyRecycleAdapter extends ListAdapter<SongListBean, RecyclerView.Vie
             MyRecycleAdapter.SongListViewHolder songListViewHolder = (SongListViewHolder) holder;
             SongListBean songListBean = getCurrentList().get(holder.getAdapterPosition() - 1);
             songListViewHolder.mTitle.setText(songListBean.getTitle());
-            songListViewHolder.mNumber.setText(songListBean.getNumber() + " 首");
+            songListViewHolder.mNumber.setText(songListBean.getSize() + " 首");
             GlideLoadUtils.setRound(
                     holder.itemView.getContext(),
                     songListBean.getImage(),
