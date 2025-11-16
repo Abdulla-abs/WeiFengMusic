@@ -26,30 +26,22 @@ import com.bumptech.glide.request.animation.GlideAnimation;
 import com.bumptech.glide.request.target.SimpleTarget;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.gson.Gson;
-import java.io.IOException;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.Response;
 import android.widget.FrameLayout;
 
 import com.wei.music.R;
 import com.wei.music.adapter.MusicListAdapter;
 import com.wei.music.bean.SongListBean;
-import com.wei.music.service.controller.MusicController;
-import com.wei.music.utils.AudioFileFetcher;
 import com.wei.music.utils.GlideLoadUtils;
-import com.wei.music.utils.MMKVUtils;
 import com.wei.music.utils.ToolUtil;
 import com.wei.music.utils.OkHttpUtil;
 import com.wei.music.view.MarqueeView;
 import com.wei.music.service.MusicService;
 import com.wei.music.utils.ColorUtil;
-import com.wei.music.utils.CloudMusicApi;
-import com.wei.music.bean.UserMusicListBean;
 import com.wei.music.utils.AppBarStateChangeListener;
 
 
