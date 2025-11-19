@@ -34,7 +34,6 @@ public class MusicListDialog extends AppCompatActivity implements MusicListDialo
     private BottomSheetBehavior mBottomSheet;
     private LinearLayout mSheetLinear;
 
-    private ToolUtil mToolUtil;
     private boolean isMove = false;
     private int index;
 
@@ -42,8 +41,7 @@ public class MusicListDialog extends AppCompatActivity implements MusicListDialo
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.dialog_activity_musiclist);
-        mToolUtil = ToolUtil.getInstance();
-        mToolUtil.setStatusBarColor(this, Color.TRANSPARENT, getResources().getColor(R.color.colorPrimary), true);
+        ToolUtil.setStatusBarColor(this, Color.TRANSPARENT, getResources().getColor(R.color.colorPrimary), true);
         initMediaBrowser();
         initView();
     }
@@ -139,7 +137,7 @@ public class MusicListDialog extends AppCompatActivity implements MusicListDialo
             mMusicListAdpater = new MusicListDialogAdapter(MusicListDialog.this, children);
             mRecyclerView.setAdapter(mMusicListAdpater); 
             mMusicListAdpater.OnClickListener(MusicListDialog.this);
-            smoothMoveToPosition(mToolUtil.readInt("MusicPosition"));
+            smoothMoveToPosition(ToolUtil.readInt("MusicPosition"));
         }
 
         @Override

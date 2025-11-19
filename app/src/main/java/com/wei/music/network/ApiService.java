@@ -26,11 +26,13 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class ApiService {
 
-    private static final String NESTED_BASE_URL = "https://apis.netstart.cn/music/";
+    private static final String LOGGING_URL = "https://apis.netstart.cn/music/";
+    private static final String NESTED_BASE_URL = "https://163api.qijieya.cn/";
     public static final String WEI_BASE_URL = "https://netease-cloud-music-api-wei.vercel.app/";
 
+    private final LoginApi loginApi;
     private final NestedApi nestedApi;
-    private final ServiceApi weiApi;
+    private final WeiApi weiApi;
 
     private ApiService() {
         nestedApi = new Retrofit.Builder()
@@ -47,22 +49,34 @@ public class ApiService {
                 .addConverterFactory(GsonConverterFactory.create())
                 .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
                 .build()
-                .create(ServiceApi.class);
+                .create(WeiApi.class);
+
+        loginApi = new Retrofit.Builder()
+                .baseUrl(LOGGING_URL)
+                .client(getDefOkhttpClient())
+                .addConverterFactory(GsonConverterFactory.create())
+                .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
+                .build()
+                .create(LoginApi.class);
     }
 
     public NestedApi getNestedApi() {
         return nestedApi;
     }
 
-    public ServiceApi getWeiApi() {
+    public WeiApi getWeiApi() {
         return weiApi;
+    }
+
+    public LoginApi getLoginApi() {
+        return loginApi;
     }
 
     public static class ServiceHolder {
         public static ApiService service = new ApiService();
     }
 
-    private OkHttpClient getDefOkhttpClient(){
+    private OkHttpClient getDefOkhttpClient() {
         return new OkHttpClient.Builder()
                 .addInterceptor(new DefaultInterceptor())
                 .addInterceptor(getLoggingInterceptor())
@@ -73,13 +87,13 @@ public class ApiService {
                 .build();
     }
 
-    private HttpLoggingInterceptor getLoggingInterceptor(){
+    private HttpLoggingInterceptor getLoggingInterceptor() {
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
         loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
         return loggingInterceptor;
     }
 
-    private CookieJar getCookieJar(){
+    private CookieJar getCookieJar() {
         return new PersistentCookieJar();
     }
 

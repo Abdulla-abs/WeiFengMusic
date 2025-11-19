@@ -20,21 +20,15 @@ public class ToolUtil {
     
     private static MMKV mMmkv = null;
     private static CharSequence sysTimeStr = null;
-     
-    public ToolUtil() {
-        if(mMmkv == null) {
-            mMmkv = MMKV.defaultMMKV();
-        }
+
+    static {
+        mMmkv = MMKV.defaultMMKV();
     }
-    
-    private static class ToolUtilHolder {
-        private final static ToolUtil ToolUtilINSTANCE = new ToolUtil();
+    private ToolUtil() {
+
     }
-    
-    public static ToolUtil getInstance() {
-        return ToolUtilHolder.ToolUtilINSTANCE;
-    }
-    
+
+
     public static CharSequence getTime(String format, long time) {
         return sysTimeStr = DateFormat.format(format, time);
     }

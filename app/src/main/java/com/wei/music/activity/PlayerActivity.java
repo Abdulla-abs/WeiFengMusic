@@ -110,8 +110,7 @@ public class PlayerActivity extends AppCompatActivity implements View.OnClickLis
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_player);
-        mToolUtil = ToolUtil.getInstance();
-        mToolUtil.setStatusBarColor(this, Color.TRANSPARENT, Color.TRANSPARENT, true);
+        ToolUtil.setStatusBarColor(this, Color.TRANSPARENT, Color.TRANSPARENT, true);
         mGlideLoadUtils = GlideLoadUtils.getInstance();
         mOkHttpUtil = OkHttpUtil.getInstance();
         isVertical = (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);

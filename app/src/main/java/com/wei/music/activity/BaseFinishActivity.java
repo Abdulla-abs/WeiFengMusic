@@ -15,14 +15,12 @@ import com.wei.music.utils.ToolUtil;
 public abstract class BaseFinishActivity extends AppCompatActivity implements FinishLayout.OnFinishListener {
 
     private FinishLayout mFinishLayout;
-    private ToolUtil mToolUtil;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.base_finish_activity);
-        mToolUtil = ToolUtil.getInstance();
-        mToolUtil.setStatusBarColor(this, Color.TRANSPARENT, getResources().getColor(R.color.colorPrimary), true);
+        ToolUtil.setStatusBarColor(this, Color.TRANSPARENT, getResources().getColor(R.color.colorPrimary), true);
         mFinishLayout = (FinishLayout) findViewById(R.id.base_finish_activity_layout);
         mFinishLayout.setOnFinishListener(this);
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);    

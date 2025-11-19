@@ -26,6 +26,7 @@ import com.wei.music.AppSessionManager;
 import com.wei.music.R;
 import com.wei.music.activity.MusicListActivity;
 import com.wei.music.adapter.MyRecycleAdapter;
+import com.wei.music.bean.PlaylistDTO;
 import com.wei.music.bean.SongListBean;
 import com.wei.music.bean.UserLoginBean;
 import com.wei.music.databinding.HomeFragmentBinding;
@@ -82,8 +83,8 @@ public class HomeFragment extends Fragment {
             }
 
             @Override
-            public void onSongListClick(SongListBean data, View image, View title, View msg) {
-                MMKVUtils.saveCurrentSongList(data);
+            public void onSongListClick(PlaylistDTO data, View image, View title, View msg) {
+                //MMKVUtils.saveCurrentSongList(data);
                 View playBar = requireActivity().findViewById(R.id.playbar_view);
                 Intent intent = new Intent(getActivity(), MusicListActivity.class);
                 Bundle bundle = ActivityOptionsCompat.makeSceneTransitionAnimation(
@@ -126,12 +127,13 @@ public class HomeFragment extends Fragment {
                 }
             }
         });
-        homeViewModel.songList.observe(getViewLifecycleOwner(), new Observer<List<SongListBean>>() {
-            @Override
-            public void onChanged(List<SongListBean> songListBeans) {
-                mSongListAdapter.submitList(new ArrayList<>(songListBeans));
-            }
-        });
+        AppSessionManager.Holder.instance.allPlaylistData
+                .observe(getViewLifecycleOwner(), new Observer<List<PlaylistDTO>>() {
+                    @Override
+                    public void onChanged(List<PlaylistDTO> playlistDTOS) {
+                        mSongListAdapter.submitList(new ArrayList<>(playlistDTOS));
+                    }
+                });
         AppSessionManager.Holder.instance.userLoginLiveData.observe(getViewLifecycleOwner(), new Observer<Resource<UserLoginBean>>() {
             @Override
             public void onChanged(Resource<UserLoginBean> userLoginBeanResource) {

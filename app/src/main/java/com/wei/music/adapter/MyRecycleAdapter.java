@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.wei.music.R;
+import com.wei.music.bean.PlaylistDTO;
 import com.wei.music.bean.SongListBean;
 import com.wei.music.bean.UserLoginBean;
 import com.wei.music.databinding.LayoutHomeMineBinding;
@@ -22,7 +23,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-public class MyRecycleAdapter extends ListAdapter<SongListBean, RecyclerView.ViewHolder> {
+public class MyRecycleAdapter extends ListAdapter<PlaylistDTO, RecyclerView.ViewHolder> {
 
     private enum ViewType {
         TYPE_USER_CARD(0),
@@ -37,18 +38,16 @@ public class MyRecycleAdapter extends ListAdapter<SongListBean, RecyclerView.Vie
     private UserLoginBean userLoginBean;
     private OnItemClickListener mListener;
 
-    private static final DiffUtil.ItemCallback<SongListBean> diffCallback = new DiffUtil.ItemCallback<>() {
+    private static final DiffUtil.ItemCallback<PlaylistDTO> diffCallback = new DiffUtil.ItemCallback<>() {
         @Override
-        public boolean areItemsTheSame(@NonNull SongListBean oldItem, @NonNull SongListBean newItem) {
+        public boolean areItemsTheSame(@NonNull PlaylistDTO oldItem, @NonNull PlaylistDTO newItem) {
             // 推荐使用唯一 ID，或标题+图片的组合
             return Objects.equals(oldItem.getId(), newItem.getId());
         }
 
         @Override
-        public boolean areContentsTheSame(@NonNull SongListBean oldItem, @NonNull SongListBean newItem) {
-            return oldItem.getTitle().equals(newItem.getTitle()) &&
-                    oldItem.getSize() == newItem.getSize() &&
-                    Objects.equals(oldItem.getImage(), newItem.getImage());
+        public boolean areContentsTheSame(@NonNull PlaylistDTO oldItem, @NonNull PlaylistDTO newItem) {
+            return oldItem.getName().equals(newItem.getName());
         }
     };
 
@@ -114,12 +113,12 @@ public class MyRecycleAdapter extends ListAdapter<SongListBean, RecyclerView.Vie
 
         } else if (holder instanceof MyRecycleAdapter.SongListViewHolder) {
             MyRecycleAdapter.SongListViewHolder songListViewHolder = (SongListViewHolder) holder;
-            SongListBean songListBean = getCurrentList().get(holder.getAdapterPosition() - 1);
-            songListViewHolder.mTitle.setText(songListBean.getTitle());
-            songListViewHolder.mNumber.setText(songListBean.getSize() + " 首");
+            PlaylistDTO playlistDTO = getCurrentList().get(holder.getAdapterPosition() - 1);
+            songListViewHolder.mTitle.setText(playlistDTO.getName());
+            songListViewHolder.mNumber.setText(playlistDTO.getTrackCount() + " 首");
             GlideLoadUtils.setRound(
                     holder.itemView.getContext(),
-                    songListBean.getImage(),
+                    playlistDTO.getCoverImgUrl(),
                     8,
                     songListViewHolder.mImage
             );
@@ -127,7 +126,7 @@ public class MyRecycleAdapter extends ListAdapter<SongListBean, RecyclerView.Vie
                 @Override
                 public void onClick(View v) {
                     if (mListener != null) {
-                        mListener.onSongListClick(songListBean,
+                        mListener.onSongListClick(playlistDTO,
                                 songListViewHolder.mImage,
                                 songListViewHolder.mTitle,
                                 songListViewHolder.mNumber
@@ -164,7 +163,7 @@ public class MyRecycleAdapter extends ListAdapter<SongListBean, RecyclerView.Vie
     public interface OnItemClickListener {
         void onUserCardClick(UserLoginBean user);
 
-        void onSongListClick(final SongListBean data, final View image, final View title, final View msg);
+        void onSongListClick(final PlaylistDTO data, final View image, final View title, final View msg);
     }
 
     public void setListener(OnItemClickListener mListener) {

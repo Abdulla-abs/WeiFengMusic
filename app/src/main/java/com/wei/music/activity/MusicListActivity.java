@@ -35,6 +35,7 @@ import android.widget.FrameLayout;
 
 import com.wei.music.R;
 import com.wei.music.adapter.MusicListAdapter;
+import com.wei.music.bean.PlaylistDTO;
 import com.wei.music.bean.SongListBean;
 import com.wei.music.utils.GlideLoadUtils;
 import com.wei.music.utils.ToolUtil;
@@ -72,8 +73,7 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_musiclist);
-        mToolUtil = ToolUtil.getInstance();
-        mToolUtil.setStatusBarColor(this, Color.TRANSPARENT, getResources().getColor(R.color.colorPrimary), true);
+        ToolUtil.setStatusBarColor(this, Color.TRANSPARENT, getResources().getColor(R.color.colorPrimary), true);
         mGlideLoadUtils = GlideLoadUtils.getInstance();
         mOkHttpUtil = OkHttpUtil.getInstance();
         initView();
@@ -88,7 +88,7 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
         mMediaBrowser.connect();
     }
 
-    private MediaBrowserCompat.ConnectionCallback connectionCallback = new MediaBrowserCompat.ConnectionCallback() {
+    private final MediaBrowserCompat.ConnectionCallback connectionCallback = new MediaBrowserCompat.ConnectionCallback() {
         @Override
         public void onConnected() {
             MediaSessionCompat.Token token = mMediaBrowser.getSessionToken();
@@ -96,11 +96,11 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
                 mMediaController = new MediaControllerCompat(MusicListActivity.this, token);
             } catch (RemoteException e) {}
             mMediaController.registerCallback(mMediaCallback);
-            Optional.ofNullable(GsonUtils.fromJson(getIntent().getStringExtra(INTENT_SONG_LIST),SongListBean.class))
-                    .ifPresent(new Consumer<SongListBean>() {
+            Optional.ofNullable(GsonUtils.fromJson(getIntent().getStringExtra(INTENT_SONG_LIST), PlaylistDTO.class))
+                    .ifPresent(new Consumer<PlaylistDTO>() {
                         @Override
-                        public void accept(SongListBean songListBean) {
-                            initData(songListBean, mToolUtil.readString("UserCookie"));
+                        public void accept(PlaylistDTO playlistDTO) {
+                            initData(playlistDTO, ToolUtil.readString("UserCookie"));
                         }
                     });
 
@@ -171,9 +171,9 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
         }
     }
 
-    public void initData(final SongListBean songListBean, final String cookie) {
-        mMusicListName.setText(songListBean.getTitle());
-        GlideLoadUtils.setRound(MusicListActivity.this, mToolUtil.readString("SongListIcon"), 8,  mMusicListIcon);
+    public void initData(final PlaylistDTO playlistDTO, final String cookie) {
+        mMusicListName.setText(playlistDTO.getName());
+        GlideLoadUtils.setRound(MusicListActivity.this, playlistDTO.getCoverImgUrl(), 8,  mMusicListIcon);
         getBackBitmap();
 
         Bundle bundle = new Bundle();

@@ -5,11 +5,13 @@ import android.content.Context;
 
 import com.tencent.mmkv.MMKV;
 import com.baidu.mobstat.StatService;
+import com.wei.music.database.AppDatabase;
 
 public class App extends Application {
 
     private static App sApp;
     private static Context mContext;
+    private static AppDatabase database;
 
     @Override
     public void onCreate() {
@@ -17,6 +19,8 @@ public class App extends Application {
         sApp = this;
         mContext = getApplicationContext();
         MMKV.initialize(this);
+        database = AppDatabase.getInstance(this);
+
         AppSessionManager.Holder.instance.init();
         StatService.start(this);
     }
@@ -27,6 +31,10 @@ public class App extends Application {
 
     public static Context getContext() {
         return mContext;
+    }
+
+    public static AppDatabase getDatabase() {
+        return database;
     }
 }
 

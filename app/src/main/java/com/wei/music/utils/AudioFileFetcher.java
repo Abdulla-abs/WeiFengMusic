@@ -4,6 +4,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.provider.MediaStore;
 
+import com.wei.music.bean.PlaylistDTO;
 import com.wei.music.bean.SongListBean;
 
 import java.util.ArrayList;
@@ -11,15 +12,14 @@ import java.util.Collections;
 import java.util.List;
 
 public class AudioFileFetcher {
-
     public static final int LOCAL_SONG_LIST_ID = -1;
-    public final static SongListBean cachedLocalSongs = new SongListBean(
-            "本地歌曲歌单",
-            0,
-            "",
-            LOCAL_SONG_LIST_ID
-    );
-    public static List<AudioFile> cachedLocalSongsList = Collections.emptyList();
+
+    public static PlaylistDTO getLocalMusic() {
+        PlaylistDTO playlistDTO = new PlaylistDTO();
+        playlistDTO.setName("本地歌曲歌单");
+        playlistDTO.setId(LOCAL_SONG_LIST_ID);
+        return playlistDTO;
+    }
 
     public static List<AudioFile> getAudioFiles(Context context) {
         List<AudioFile> audioFiles = new ArrayList<>();
@@ -71,9 +71,6 @@ public class AudioFileFetcher {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        cachedLocalSongs.setSize(audioFiles.size());
-        cachedLocalSongsList = audioFiles;
 
         return audioFiles;
     }
