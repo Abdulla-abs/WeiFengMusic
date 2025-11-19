@@ -1,13 +1,19 @@
 package com.wei.music.bean;
 
-public class SongListBean {
-    private String title, number;
-    private String image;
-    private String id;
+import java.util.Objects;
 
-    public SongListBean(String title, String number, String image, String id) {
+public class SongListBean {
+    private String title;
+    private int size;
+    private String image;
+    private int id;
+
+    public SongListBean() {
+    }
+
+    public SongListBean(String title, int size, String image, int id) {
         this.title = title;
-        this.number = number;
+        this.size = size;
         this.image = image;
         this.id = id;
     }
@@ -20,12 +26,16 @@ public class SongListBean {
         return title;
     }
 
-    public void setNumber(String number) {
-        this.number = number;
+    public int getSize() {
+        return size;
     }
 
-    public String getNumber() {
-        return number;
+    public void setSize(int size) {
+        this.size = size;
+    }
+
+    public void setId(int id) {
+        this.id = id;
     }
 
     public void setImage(String image) {
@@ -36,12 +46,24 @@ public class SongListBean {
         return image;
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getId() {
+    public int getId() {
         return id;
     }
 
+    @Override
+    public final boolean equals(Object o) {
+        if (!(o instanceof SongListBean)) return false;
+
+        SongListBean that = (SongListBean) o;
+        return size == that.size && id == that.id && Objects.equals(title, that.title) && Objects.equals(image, that.image);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Objects.hashCode(title);
+        result = 31 * result + size;
+        result = 31 * result + Objects.hashCode(image);
+        result = 31 * result + id;
+        return result;
+    }
 }

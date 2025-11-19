@@ -110,8 +110,7 @@ public class PlayerActivity extends AppCompatActivity implements View.OnClickLis
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_player);
-        mToolUtil = ToolUtil.getInstance();
-        mToolUtil.setStatusBarColor(this, Color.TRANSPARENT, Color.TRANSPARENT, true);
+        ToolUtil.setStatusBarColor(this, Color.TRANSPARENT, Color.TRANSPARENT, true);
         mGlideLoadUtils = GlideLoadUtils.getInstance();
         mOkHttpUtil = OkHttpUtil.getInstance();
         isVertical = (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
@@ -198,43 +197,36 @@ public class PlayerActivity extends AppCompatActivity implements View.OnClickLis
 
     @Override
     public void onClick(View view) {
-        switch(view.getId()) {
-            case R.id.player_like:
-                if(isLike) {
-                    mPlayerLike.setImageDrawable(getResources().getDrawable(R.drawable.ic_heart_outline));
-                    isLike = false;
-                } else {
-                    mPlayerLike.setImageDrawable(getResources().getDrawable(R.drawable.ic_heart_fill));
-                    isLike = true;
-                }
-                Bundle likebundle = new Bundle();
-                likebundle.putString("id", mToolUtil.readString("MusicId"));
-                likebundle.putBoolean("is", isLike);
-                mMediaController.getTransportControls().sendCustomAction("LikeMusic", likebundle);
-                break;
-            case R.id.player_equalizer:
-                startActivity(new Intent(this, EqualizerActivity.class));
-                break;       
-            case R.id.player_previous:
-                mMediaController.getTransportControls().skipToPrevious();
-                break;
-            case R.id.player_play:
-                mMediaController.getTransportControls().play();
-                break;
-            case R.id.player_next:
-                mMediaController.getTransportControls().skipToNext();
-                break;
-            case R.id.player_list:
-                startActivity(new Intent(this, MusicListDialog.class));
-                break;
-            case R.id.player_model:
-                if(mPlayModel++ >= 2) {
-                    mPlayModel = 0;
-                }
-                Bundle bundle = new Bundle();
-                bundle.putInt("model", mPlayModel);
-                mMediaController.getTransportControls().sendCustomAction("PlayModel", bundle);
-                break;
+        int viewId = view.getId();
+        if (viewId == R.id.player_like) {
+            if (isLike) {
+                mPlayerLike.setImageDrawable(getResources().getDrawable(R.drawable.ic_heart_outline));
+                isLike = false;
+            } else {
+                mPlayerLike.setImageDrawable(getResources().getDrawable(R.drawable.ic_heart_fill));
+                isLike = true;
+            }
+            Bundle likebundle = new Bundle();
+            likebundle.putString("id", mToolUtil.readString("MusicId"));
+            likebundle.putBoolean("is", isLike);
+            mMediaController.getTransportControls().sendCustomAction(MusicService.ACTION_LIKE_MUSIC, likebundle);
+        } else if (viewId == R.id.player_equalizer) {
+            startActivity(new Intent(this, EqualizerActivity.class));
+        } else if (viewId == R.id.player_previous) {
+            mMediaController.getTransportControls().skipToPrevious();
+        } else if (viewId == R.id.player_play) {
+            mMediaController.getTransportControls().play();
+        } else if (viewId == R.id.player_next) {
+            mMediaController.getTransportControls().skipToNext();
+        } else if (viewId == R.id.player_list) {
+            startActivity(new Intent(this, MusicListDialog.class));
+        } else if (viewId == R.id.player_model) {
+            if (mPlayModel++ >= 2) {
+                mPlayModel = 0;
+            }
+            Bundle bundle = new Bundle();
+            bundle.putInt("model", mPlayModel);
+            mMediaController.getTransportControls().sendCustomAction(MusicService.ACTION_PLAY_MODE, bundle);
         }
     }
     

@@ -6,9 +6,9 @@ import java.util.ArrayList;
 
 public class UserMusicListBean {
     
-    public playlist playlist;
+    public PlayList playlist;
     
-    public class playlist {
+    public static class PlayList {
         
         public String coverImgUrl;//歌单封面
         public String name;//歌单名

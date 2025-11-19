@@ -6,6 +6,8 @@
     <string name="login">Login</string>
     <string name="user">User</string>
     <string name="password">Password</string>
+    <string name="captcha">Captcha</string>
+    <string name="request_captcha">Request Captcha</string>
     <string name="open_setting">打开设置</string>
     <string name="tips">Tips</string>
     <string name="permission">权限</string>

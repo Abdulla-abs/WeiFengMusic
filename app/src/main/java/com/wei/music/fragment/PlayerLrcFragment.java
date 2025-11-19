@@ -31,8 +31,7 @@ public class PlayerLrcFragment extends Fragment implements PlayerActivity.OnLrcL
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        mRootView = inflater.inflate(R.layout.player_lrc_fragment, null);
-        mToolUtil = ToolUtil.getInstance();
+        mRootView = inflater.inflate(R.layout.player_lrc_fragment, container);
         mGlideLoadUtils = GlideLoadUtils.getInstance();
         mActivity = (PlayerActivity)getActivity();
         mLrcView = mRootView.findViewById(R.id.player_lrcview);
