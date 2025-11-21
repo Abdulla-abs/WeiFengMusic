@@ -2,6 +2,7 @@ package abbas.fun.myutil;
 
 import java.util.HashMap;
 import java.util.Optional;
+import java.util.function.Function;
 
 public class Witch<O, S> {
 
@@ -16,6 +17,10 @@ public class Witch<O, S> {
 
     public static <O, S> Witch<O, S> of(O origin) {
         return new Witch<>(origin);
+    }
+
+    public <N> Witch<N, S> mapper(Function<O, N> transform) {
+        return new Witch<>(transform.apply(origin));
     }
 
     public Witch<O, S> with(O witch, S sendBack) {

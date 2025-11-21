@@ -8,32 +8,29 @@ import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
 
 import com.wei.music.bean.PlaylistDTO;
+import com.wei.music.bean.UserLoginBean;
+import com.wei.music.database.dao.UserDao;
 import com.wei.music.database.dao.UserSubCountDao;
 import com.wei.music.database.typeconverter.PlaylistConverters;
+import com.wei.music.database.typeconverter.UserDtoConverters;
 
-@Database(entities = {PlaylistDTO.class}, version = 1, exportSchema = false)
-@TypeConverters({PlaylistConverters.class})
+@Database(entities = {PlaylistDTO.class, UserLoginBean.class}, version = 3, exportSchema = false)
+@TypeConverters({PlaylistConverters.class, UserDtoConverters.class})
 public abstract class AppDatabase extends RoomDatabase {
 
-    public abstract UserSubCountDao userDao();
+    public abstract UserDao userDao();
 
-    private static volatile AppDatabase INSTANCE;
+    public abstract UserSubCountDao userSubCountDao();
+
 
     public static AppDatabase getInstance(Context context) {
-        if (INSTANCE == null) {
-            synchronized (AppDatabase.class) {
-                if (INSTANCE == null) {
-                    INSTANCE = Room.databaseBuilder(
-                                    context.getApplicationContext(),
-                                    AppDatabase.class,
-                                    "weifengmusic.db"   // 数据库文件名
-                            )
-                            // 开发阶段可以用这个，上线前一定要写 Migration
-                            .fallbackToDestructiveMigration()
-                            .build();
-                }
-            }
-        }
-        return INSTANCE;
+        return Room.databaseBuilder(
+                        context.getApplicationContext(),
+                        AppDatabase.class,
+                        "weifengmusic.db"   // 数据库文件名
+                )
+                // 开发阶段可以用这个，上线前一定要写 Migration
+                .fallbackToDestructiveMigration()
+                .build();
     }
 }

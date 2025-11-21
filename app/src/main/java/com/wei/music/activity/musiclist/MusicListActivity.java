@@ -1,4 +1,5 @@
-package com.wei.music.activity;
+package com.wei.music.activity.musiclist;
+
 import android.content.ComponentName;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -16,7 +17,10 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -32,18 +36,26 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 import android.widget.FrameLayout;
+import android.widget.Toast;
 
+import com.wei.music.MusicSessionManager;
 import com.wei.music.R;
+import com.wei.music.activity.MusicListDialog;
+import com.wei.music.activity.PlayerActivity;
 import com.wei.music.adapter.MusicListAdapter;
 import com.wei.music.bean.PlaylistDTO;
-import com.wei.music.bean.SongListBean;
+import com.wei.music.bean.UserMusicListBean;
+import com.wei.music.service.musicaction.MusicActionContract;
 import com.wei.music.utils.GlideLoadUtils;
+import com.wei.music.utils.Resource;
 import com.wei.music.utils.ToolUtil;
 import com.wei.music.utils.OkHttpUtil;
 import com.wei.music.view.MarqueeView;
 import com.wei.music.service.MusicService;
 import com.wei.music.utils.ColorUtil;
 import com.wei.music.utils.AppBarStateChangeListener;
+
+import jakarta.inject.Inject;
 
 
 public class MusicListActivity extends AppCompatActivity implements View.OnClickListener, MusicListAdapter.OnItemClick {
@@ -68,6 +80,13 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
 
     private Bitmap mBackBitmap = null;
     private int[] colors = null;
+
+    private MusicListViewModel viewModel;
+
+    @Inject
+    ViewModelProvider.Factory factory;
+    @Inject
+    MusicSessionManager musicSessionManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,7 +113,8 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
             MediaSessionCompat.Token token = mMediaBrowser.getSessionToken();
             try {
                 mMediaController = new MediaControllerCompat(MusicListActivity.this, token);
-            } catch (RemoteException e) {}
+            } catch (RemoteException e) {
+            }
             mMediaController.registerCallback(mMediaCallback);
             Optional.ofNullable(GsonUtils.fromJson(getIntent().getStringExtra(INTENT_SONG_LIST), PlaylistDTO.class))
                     .ifPresent(new Consumer<PlaylistDTO>() {
@@ -129,14 +149,14 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
         @Override
         public void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {
             super.onQueueChanged(queue);
-            mMusicListAdpater = new MusicListAdapter(MusicListActivity.this, queue);
-            mRecyclerView.setAdapter(mMusicListAdpater);
-            mMusicListAdpater.OnClickListener(MusicListActivity.this);
+//            mMusicListAdpater = new MusicListAdapter(MusicListActivity.this, queue);
+//            mRecyclerView.setAdapter(mMusicListAdpater);
+//            mMusicListAdpater.OnClickListener(MusicListActivity.this);
         }
     };
 
     public void getBackBitmap() {
-        if(mBackBitmap == null) {
+        if (mBackBitmap == null) {
             mGlideLoadUtils.getBitmap(this, mToolUtil.readString("SongListIcon"), 300, new SimpleTarget<Bitmap>() {
                 @Override
                 public void onResourceReady(Bitmap bitmap, GlideAnimation<? super Bitmap> glideAnimation) {
@@ -154,6 +174,27 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
     }
 
     private void initData() {
+        viewModel = new ViewModelProvider(this, factory).get(MusicListViewModel.class);
+        PlaylistDTO playlistDTO = GsonUtils.fromJson(getIntent().getStringExtra(INTENT_SONG_LIST), PlaylistDTO.class);
+
+        viewModel.fetchPlayListDetail(playlistDTO);
+
+        viewModel.playListDetail.observe(this, new Observer<Resource<UserMusicListBean.PlayList>>() {
+            @Override
+            public void onChanged(Resource<UserMusicListBean.PlayList> playListResource) {
+
+            }
+        });
+        viewModel.playListDetailQueue.observe(this, new Observer<List<MediaSessionCompat.QueueItem>>() {
+            @Override
+            public void onChanged(List<MediaSessionCompat.QueueItem> queueItems) {
+                mMusicListAdpater = new MusicListAdapter(MusicListActivity.this, queueItems);
+                mRecyclerView.setAdapter(mMusicListAdpater);
+            }
+        });
+
+        mMusicListAdpater.OnClickListener(MusicListActivity.this);
+
         if (mToolUtil.readBool("MusicId")) {
             mGlideLoadUtils.setCircle(this, mToolUtil.readString("MusicIcon"), mPlayBarIcon);
             mPlayBarTitle.setText(mToolUtil.readString("MusicName") + "-" + mToolUtil.readString("MusicSinger"));
@@ -161,7 +202,7 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
                 @Override
                 public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
                     int[] colors = ColorUtil.getColor(resource);
-                    GradientDrawable mGroupDrawable= (GradientDrawable) mPlayBarRoot.getBackground();
+                    GradientDrawable mGroupDrawable = (GradientDrawable) mPlayBarRoot.getBackground();
                     mGroupDrawable.setColor(colors[1]);
                     mPlayBarTitle.setTextColor(colors[0]);
                     mPlayBarPause.setColorFilter(colors[0]);
@@ -173,7 +214,7 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
 
     public void initData(final PlaylistDTO playlistDTO, final String cookie) {
         mMusicListName.setText(playlistDTO.getName());
-        GlideLoadUtils.setRound(MusicListActivity.this, playlistDTO.getCoverImgUrl(), 8,  mMusicListIcon);
+        GlideLoadUtils.setRound(MusicListActivity.this, playlistDTO.getCoverImgUrl(), 8, mMusicListIcon);
         getBackBitmap();
 
         Bundle bundle = new Bundle();
@@ -212,7 +253,7 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
         mAppBarLayout.addOnOffsetChangedListener(new AppBarStateChangeListener() {
             @Override
             public void onStateChanged(AppBarLayout appBarLayout, AppBarStateChangeListener.State state) {
-                switch(state) {
+                switch (state) {
                     case EXPANDED:
                         mTitleView.setText("");
                         getBackBitmap();
@@ -258,13 +299,28 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
 
     @Override
     public void OnClick(MediaSessionCompat.QueueItem data, int position) {
-        mMediaController.getTransportControls().skipToQueueItem(position);
+        List<MediaSessionCompat.QueueItem> queueItems = viewModel.playListDetailQueue.getValue();
+        if (queueItems == null || queueItems.isEmpty()) {
+            Toast.makeText(MusicListActivity.this, "当前歌单列表没有歌曲", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        int index = queueItems.indexOf(data);
+        if (index < 0) {
+            Toast.makeText(MusicListActivity.this, "未找到指定歌曲", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        musicSessionManager.intent.postValue(new MusicActionContract.OnPlayListClick(
+                queueItems,
+                index
+        ));
+//        mMediaController.getTransportControls().skipToQueueItem(position);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if(mMediaBrowser != null) {
+        if (mMediaBrowser != null) {
             mMediaBrowser.disconnect();
             Glide.get(this).clearMemory();
         }

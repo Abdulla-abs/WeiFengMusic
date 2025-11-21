@@ -1,60 +1,133 @@
 package com.wei.music.service.controller;
 
-import android.os.Bundle;
-import android.support.v4.media.MediaDescriptionCompat;
-import android.support.v4.media.MediaMetadataCompat;
-import android.support.v4.media.session.MediaSessionCompat;
+import android.content.Context;
 
-import com.wei.music.AppSessionManager;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+
+import com.wei.music.App;
 import com.wei.music.bean.MusicUrlDTO;
 import com.wei.music.bean.PlaylistDTO;
-import com.wei.music.bean.SongListBean;
-import com.wei.music.service.MusicService;
+import com.wei.music.bean.UserMusicListBean;
+import com.wei.music.di.annotation.ApplicationContext;
+import com.wei.music.service.wrapper.TypeWrapper;
 import com.wei.music.utils.AudioFileFetcher;
 import com.wei.music.utils.Resource;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 import java.util.function.Predicate;
 
-import io.reactivex.rxjava3.core.Single;
+import javax.inject.Inject;
 
+import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.core.SingleSource;
+import io.reactivex.rxjava3.functions.Function;
+import jakarta.inject.Singleton;
+
+//@Singleton
 public class LocalSongDataSource extends MusicDataSource {
 
+    private final WeakReference<Context> application;
+
+    //歌单信息
+    private final PlaylistDTO defaultLocalPlayList = new PlaylistDTO();
+    //歌单信息带歌曲列表
+    private final UserMusicListBean.PlayList defaultLocalPlayListDetail = new UserMusicListBean.PlayList();
+    //歌单列表条目
+    public final MutableLiveData<List<AudioFileFetcher.AudioFile>> _localAudioFiles = new MutableLiveData<>();
+    public final LiveData<List<AudioFileFetcher.AudioFile>> localAudioFiles = _localAudioFiles;
+
+    @Inject
+    public LocalSongDataSource(@ApplicationContext Context application) {
+        this.application = new WeakReference<>(application);
+        defaultLocalPlayList.setName("本地歌曲歌单");
+        defaultLocalPlayList.setDescription("本地歌曲歌单");
+        defaultLocalPlayList.setId(AudioFileFetcher.LOCAL_SONG_LIST_ID);
+
+        defaultLocalPlayListDetail.setName(defaultLocalPlayList.getName());
+        defaultLocalPlayListDetail.setDescription(defaultLocalPlayList.getDescription());
+    }
+
+
     @Override
-    public Single<List<MediaSessionCompat.QueueItem>> resetMusicSet(PlaylistDTO songList) {
+    public Single<List<PlaylistDTO>> fetchSongList(Integer userId) {
+        return Single.fromCallable(
+                new Callable<List<AudioFileFetcher.AudioFile>>() {
+                    @Override
+                    public List<AudioFileFetcher.AudioFile> call() throws Exception {
+                        List<AudioFileFetcher.AudioFile> audioFiles = AudioFileFetcher.getAudioFiles(application.get());
+                        _localAudioFiles.postValue(audioFiles);
+                        return audioFiles;
+                    }
+                }
+        ).flatMap(new Function<List<AudioFileFetcher.AudioFile>, SingleSource<List<PlaylistDTO>>>() {
+            @Override
+            public SingleSource<List<PlaylistDTO>> apply(List<AudioFileFetcher.AudioFile> audioFiles) throws Throwable {
+                defaultLocalPlayList.setTrackCount(audioFiles.size());
+                return Single.just(Collections.singletonList(defaultLocalPlayList));
+            }
+        });
+    }
 
-        if (AppSessionManager.Holder.instance.localAudioFiles.isEmpty())
-            return Single.just(Collections.emptyList());
-        List<MediaSessionCompat.QueueItem> musicList = new ArrayList<>();
-        for (int i = 0; i < AppSessionManager.Holder.instance.localAudioFiles.size(); i++) {
-            MediaMetadataCompat metadata = new MediaMetadataCompat.Builder()
-                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, AppSessionManager.Holder.instance.localAudioFiles.get(i).getName())//歌名
-                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, AppSessionManager.Holder.instance.localAudioFiles.get(i).getArtist())//歌手
-                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, AppSessionManager.Holder.instance.localAudioFiles.get(i).getAlbum())//歌曲封面
-                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, AppSessionManager.Holder.instance.localAudioFiles.get(i).getId() + "")//歌曲id
-                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, AppSessionManager.Holder.instance.localAudioFiles.get(i).getPath())
-                    .build();
+    @Override
+    public Single<TypeWrapper<UserMusicListBean.PlayList>> fetchSongListDetail(PlaylistDTO songList) {
+        List<AudioFileFetcher.AudioFile> localAudioFilesValue = localAudioFiles.getValue();
 
-            MediaDescriptionCompat desc = metadata.getDescription();
-
-            Bundle extras = new Bundle();
-            extras.putInt(MusicService.MSCQIMusicType, SongType.LOCAL.type);  // 关键在这里
-
-            MediaDescriptionCompat finalDesc = new MediaDescriptionCompat.Builder()
-                    .setMediaId(desc.getMediaId())
-                    .setTitle(desc.getTitle())
-                    .setSubtitle(desc.getSubtitle())
-                    .setIconUri(desc.getIconUri())
-                    .setDescription(desc.getDescription())
-                    .setExtras(extras)  // 手动设置
-                    .build();
-
-            musicList.add(new MediaSessionCompat.QueueItem(finalDesc, i));
+        if (localAudioFilesValue == null || localAudioFilesValue.isEmpty()) {
+            return Single.just(TypeWrapper.local(defaultLocalPlayListDetail));
         }
-        return Single.just(musicList);
+
+        List<UserMusicListBean.PlayList.Tracks> trackList = new ArrayList<>();
+        for (int i = 0; i < localAudioFilesValue.size(); i++) {
+            AudioFileFetcher.AudioFile audioFile = localAudioFilesValue.get(i);
+            UserMusicListBean.PlayList.Tracks track = new UserMusicListBean.PlayList.Tracks();
+            track.setId(String.valueOf(i));
+            track.setName(audioFile.getName());
+            UserMusicListBean.PlayList.Tracks.Al al = new UserMusicListBean.PlayList.Tracks.Al();
+            al.setPicUrl(audioFile.getAlbum());
+            track.setAl(al);
+            UserMusicListBean.PlayList.Tracks.Ar ar = new UserMusicListBean.PlayList.Tracks.Ar();
+            ar.setName(audioFile.getArtist());
+            track.setAr(Collections.singletonList(ar));
+
+            trackList.add(track);
+        }
+
+        defaultLocalPlayList.setTrackCount(trackList.size());
+        return Single.just(TypeWrapper.local(defaultLocalPlayListDetail));
+
+//        List<MediaSessionCompat.QueueItem> musicList = new ArrayList<>();
+//        for (int i = 0; i < localAudioFilesValue.size(); i++) {
+//            MediaMetadataCompat metadata = new MediaMetadataCompat.Builder()
+//                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, localAudioFilesValue.get(i).getName())//歌名
+//                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, localAudioFilesValue.get(i).getArtist())//歌手
+//                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, localAudioFilesValue.get(i).getAlbum())//歌曲封面
+//                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, localAudioFilesValue.get(i).getId() + "")//歌曲id
+//                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, localAudioFilesValue.get(i).getPath())
+//                    .build();
+//
+//            MediaDescriptionCompat desc = metadata.getDescription();
+//
+//            Bundle extras = new Bundle();
+//            extras.putInt(MusicService.MSCQIMusicType, SongType.LOCAL.type);  // 关键在这里
+//
+//            MediaDescriptionCompat finalDesc = new MediaDescriptionCompat.Builder()
+//                    .setMediaId(desc.getMediaId())
+//                    .setTitle(desc.getTitle())
+//                    .setSubtitle(desc.getSubtitle())
+//                    .setIconUri(desc.getIconUri())
+//                    .setDescription(desc.getDescription())
+//                    .setExtras(extras)  // 手动设置
+//                    .build();
+//
+//            musicList.add(new MediaSessionCompat.QueueItem(finalDesc, i));
+//        }
+//        return Single.just(musicList);
     }
 
     @Override
@@ -64,10 +137,11 @@ public class LocalSongDataSource extends MusicDataSource {
 
     @Override
     public Single<Resource<MusicUrlDTO.DataDTO>> getMusicUrl(Long musicId) {
-        if (AppSessionManager.Holder.instance.localAudioFiles == null) {
-            return Single.never();
-        }
-        Optional<AudioFileFetcher.AudioFile> first = AppSessionManager.Holder.instance.localAudioFiles
+        List<AudioFileFetcher.AudioFile> localAudioFilesValue = localAudioFiles.getValue();
+        if (localAudioFilesValue == null || localAudioFilesValue.isEmpty())
+            return Single.just(new Resource.Empty<>());
+
+        Optional<AudioFileFetcher.AudioFile> first = localAudioFilesValue
                 .parallelStream()
                 .filter(new Predicate<AudioFileFetcher.AudioFile>() {
                     @Override

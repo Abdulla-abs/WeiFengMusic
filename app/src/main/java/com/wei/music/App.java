@@ -1,40 +1,29 @@
 package com.wei.music;
 
-import android.app.Application;
-import android.content.Context;
-
 import com.tencent.mmkv.MMKV;
 import com.baidu.mobstat.StatService;
 import com.wei.music.database.AppDatabase;
+import com.wei.music.di.DaggerAppComponent;
 
-public class App extends Application {
+import dagger.android.AndroidInjector;
+import dagger.android.DaggerApplication;
 
-    private static App sApp;
-    private static Context mContext;
-    private static AppDatabase database;
+public class App extends DaggerApplication {
 
     @Override
     public void onCreate() {
         super.onCreate();
-        sApp = this;
-        mContext = getApplicationContext();
-        MMKV.initialize(this);
-        database = AppDatabase.getInstance(this);
 
-        AppSessionManager.Holder.instance.init();
+        MMKV.initialize(this);
         StatService.start(this);
     }
 
-    public static App getApp() {
-        return sApp;
+    @Override
+    protected AndroidInjector<? extends DaggerApplication> applicationInjector() {
+        return DaggerAppComponent.builder()
+                .application(this)
+                .build();
     }
 
-    public static Context getContext() {
-        return mContext;
-    }
-
-    public static AppDatabase getDatabase() {
-        return database;
-    }
 }
 

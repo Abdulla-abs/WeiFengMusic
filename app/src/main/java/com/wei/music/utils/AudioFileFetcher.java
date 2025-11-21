@@ -14,12 +14,6 @@ import java.util.List;
 public class AudioFileFetcher {
     public static final int LOCAL_SONG_LIST_ID = -1;
 
-    public static PlaylistDTO getLocalMusic() {
-        PlaylistDTO playlistDTO = new PlaylistDTO();
-        playlistDTO.setName("本地歌曲歌单");
-        playlistDTO.setId(LOCAL_SONG_LIST_ID);
-        return playlistDTO;
-    }
 
     public static List<AudioFile> getAudioFiles(Context context) {
         List<AudioFile> audioFiles = new ArrayList<>();
@@ -69,7 +63,7 @@ public class AudioFileFetcher {
                 } while (cursor.moveToNext());
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            return Collections.emptyList();
         }
 
         return audioFiles;

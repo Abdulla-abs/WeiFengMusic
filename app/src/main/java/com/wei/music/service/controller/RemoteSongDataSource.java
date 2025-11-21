@@ -9,13 +9,19 @@ import com.wei.music.bean.BaseResp;
 import com.wei.music.bean.MusicUrlDTO;
 import com.wei.music.bean.PlaylistDTO;
 import com.wei.music.bean.UserMusicListBean;
-import com.wei.music.network.ApiService;
+import com.wei.music.bean.UserSubCount;
+import com.wei.music.network.NestedApi;
 import com.wei.music.service.MusicService;
+import com.wei.music.service.wrapper.TypeWrapper;
 import com.wei.music.utils.Resource;
+import com.wei.music.utils.RxSchedulers;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+
+import javax.inject.Inject;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Single;
@@ -24,75 +30,118 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 import retrofit2.Response;
 
 public class RemoteSongDataSource extends MusicDataSource {
+
+    private final NestedApi nestedApi;
+
+    @Inject
+    public RemoteSongDataSource(NestedApi nestedApi) {
+        this.nestedApi = nestedApi;
+    }
+
     @Override
-    public Single<List<MediaSessionCompat.QueueItem>> resetMusicSet(PlaylistDTO songList) {
-        return ApiService.ServiceHolder.service
-                .getNestedApi()
-                .getSongListDetail(songList.getId())
-                .subscribeOn(Schedulers.io())
-                .onErrorReturn(new Function<Throwable, UserMusicListBean>() {
+    public Single<List<PlaylistDTO>> fetchSongList(Integer userId) {
+        if (userId == null) return Single.just(Collections.emptyList());
+        return nestedApi
+                .getPlayList(userId)
+                .compose(RxSchedulers.applySchedulers())
+                .map(new Function<Response<UserSubCount>, List<PlaylistDTO>>() {
                     @Override
-                    public UserMusicListBean apply(Throwable throwable) throws Throwable {
-                        return new UserMusicListBean();
+                    public List<PlaylistDTO> apply(Response<UserSubCount> userSubCountResponse) throws Throwable {
+                        if (userSubCountResponse.isSuccessful() && userSubCountResponse.body() != null) {
+                            UserSubCount userSubCount = userSubCountResponse.body();
+                            return userSubCount.getPlaylist();
+                        }
+                        return Collections.emptyList();
                     }
                 })
-                .map(new Function<UserMusicListBean, List<MediaSessionCompat.QueueItem>>() {
+                .first(Collections.emptyList());
+    }
+
+    /**
+     *
+     * @param songList
+     * @return
+     */
+    @Override
+    public Single<TypeWrapper<UserMusicListBean.PlayList>> fetchSongListDetail(PlaylistDTO songList) {
+        return nestedApi.getSongListDetail(songList.getId())
+                .map(new Function<UserMusicListBean, TypeWrapper<UserMusicListBean.PlayList>>() {
                     @Override
-                    public List<MediaSessionCompat.QueueItem> apply(UserMusicListBean userMusicListBean) throws Throwable {
-                        UserMusicListBean.PlayList playList = Optional.ofNullable(userMusicListBean.playlist)
-                                .orElse(new UserMusicListBean.PlayList());
-                        List<MediaSessionCompat.QueueItem> list = new ArrayList<>();
-                        for (int i = 0; i < playList.tracks.size(); i++) {
-                            MediaMetadataCompat metadata = new MediaMetadataCompat.Builder()
-                                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, playList.tracks.get(i).name)
-                                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, playList.tracks.get(i).ar.get(0).name)
-                                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, playList.tracks.get(i).al.picUrl)
-                                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, String.valueOf(playList.tracks.get(i).id))
-                                    .build();
-
-                            MediaDescriptionCompat desc = metadata.getDescription();
-
-                            Bundle extras = new Bundle();
-                            extras.putInt(MusicService.MSCQIMusicType, SongType.REMOTE.type);  // 关键在这里
-
-                            MediaDescriptionCompat finalDesc = new MediaDescriptionCompat.Builder()
-                                    .setMediaId(desc.getMediaId())
-                                    .setTitle(desc.getTitle())
-                                    .setSubtitle(desc.getSubtitle())
-                                    .setIconUri(desc.getIconUri())
-                                    .setDescription(desc.getDescription())
-                                    .setExtras(extras)  // 手动设置
-                                    .build();
-
-                            list.add(new MediaSessionCompat.QueueItem(finalDesc, i));
-                        }
-                        return list;
+                    public TypeWrapper<UserMusicListBean.PlayList> apply(UserMusicListBean userMusicListBean) throws Throwable {
+                        return TypeWrapper.remote(userMusicListBean.getPlaylist());
+                    }
+                })
+                .onErrorReturn(new Function<Throwable, TypeWrapper<UserMusicListBean.PlayList>>() {
+                    @Override
+                    public TypeWrapper<UserMusicListBean.PlayList> apply(Throwable throwable) throws Throwable {
+                        return TypeWrapper.remote(new UserMusicListBean.PlayList());
                     }
                 });
+
+//        return nestedApi.getSongListDetail(songList.getId())
+//                .subscribeOn(Schedulers.io())
+//                .onErrorReturn(new Function<Throwable, UserMusicListBean>() {
+//                    @Override
+//                    public UserMusicListBean apply(Throwable throwable) throws Throwable {
+//                        return new UserMusicListBean();
+//                    }
+//                })
+//                .map(new Function<UserMusicListBean, List<MediaSessionCompat.QueueItem>>() {
+//                    @Override
+//                    public List<MediaSessionCompat.QueueItem> apply(UserMusicListBean userMusicListBean) throws Throwable {
+//                        UserMusicListBean.PlayList playList = Optional.ofNullable(userMusicListBean.playlist)
+//                                .orElse(new UserMusicListBean.PlayList());
+//                        List<MediaSessionCompat.QueueItem> list = new ArrayList<>();
+//                        for (int i = 0; i < playList.tracks.size(); i++) {
+//                            MediaMetadataCompat metadata = new MediaMetadataCompat.Builder()
+//                                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, playList.tracks.get(i).name)
+//                                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, playList.tracks.get(i).ar.get(0).name)
+//                                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, playList.tracks.get(i).al.picUrl)
+//                                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, String.valueOf(playList.tracks.get(i).id))
+//                                    .build();
+//
+//                            MediaDescriptionCompat desc = metadata.getDescription();
+//
+//                            Bundle extras = new Bundle();
+//                            extras.putInt(MusicService.MSCQIMusicType, SongType.REMOTE.type);  // 关键在这里
+//
+//                            MediaDescriptionCompat finalDesc = new MediaDescriptionCompat.Builder()
+//                                    .setMediaId(desc.getMediaId())
+//                                    .setTitle(desc.getTitle())
+//                                    .setSubtitle(desc.getSubtitle())
+//                                    .setIconUri(desc.getIconUri())
+//                                    .setDescription(desc.getDescription())
+//                                    .setExtras(extras)  // 手动设置
+//                                    .build();
+//
+//                            list.add(new MediaSessionCompat.QueueItem(finalDesc, i));
+//                        }
+//                        return list;
+//                    }
+//                });
     }
 
     @Override
     public Single<Boolean> changeMusicLikeState(boolean like, int id) {
-        return ApiService.ServiceHolder.service
-                .getWeiApi()
-                .likeMusic(like, id)
-                .subscribeOn(Schedulers.io())
-                .map(new Function<BaseResp<String>, Boolean>() {
-                    @Override
-                    public Boolean apply(BaseResp<String> stringBaseResp) throws Throwable {
-                        if (stringBaseResp.success() && stringBaseResp.getData().contains("200")) {
-                            return Boolean.TRUE;
-                        } else {
-                            return Boolean.FALSE;
-                        }
-                    }
-                });
+//        return nestedApi
+//                .likeMusic(like, id)
+//                .subscribeOn(Schedulers.io())
+//                .map(new Function<BaseResp<String>, Boolean>() {
+//                    @Override
+//                    public Boolean apply(BaseResp<String> stringBaseResp) throws Throwable {
+//                        if (stringBaseResp.success() && stringBaseResp.getData().contains("200")) {
+//                            return Boolean.TRUE;
+//                        } else {
+//                            return Boolean.FALSE;
+//                        }
+//                    }
+//                });
+        return Single.never();
     }
 
     @Override
     public Single<Resource<MusicUrlDTO.DataDTO>> getMusicUrl(Long musicId) {
-        return ApiService.ServiceHolder.service
-                .getNestedApi()
+        return nestedApi
                 .getMusicUrl(musicId)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())

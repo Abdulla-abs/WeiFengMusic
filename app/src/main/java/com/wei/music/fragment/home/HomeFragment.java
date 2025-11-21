@@ -23,28 +23,34 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.blankj.utilcode.util.GsonUtils;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.wei.music.AppSessionManager;
+import com.wei.music.MusicSessionManager;
 import com.wei.music.R;
-import com.wei.music.activity.MusicListActivity;
+import com.wei.music.activity.musiclist.MusicListActivity;
 import com.wei.music.adapter.MyRecycleAdapter;
 import com.wei.music.bean.PlaylistDTO;
-import com.wei.music.bean.SongListBean;
 import com.wei.music.bean.UserLoginBean;
 import com.wei.music.databinding.HomeFragmentBinding;
 import com.wei.music.databinding.LayoutLoginCaptchaBinding;
-import com.wei.music.utils.MMKVUtils;
 import com.wei.music.utils.Resource;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class HomeFragment extends Fragment {
+import dagger.android.support.DaggerFragment;
+import jakarta.inject.Inject;
+
+public class HomeFragment extends DaggerFragment {
     private static final String TAG = "HomeFragment";
     private HomeViewModel homeViewModel;
     private ProgressDialog progressDialog;
     private com.wei.music.databinding.HomeFragmentBinding binding;
     private MyRecycleAdapter mSongListAdapter;
     private BottomSheetDialog mLoginDialog;
+
+    @Inject
+    ViewModelProvider.Factory factory;
+
 
     @Nullable
     @Override
@@ -107,12 +113,19 @@ public class HomeFragment extends Fragment {
     }
 
     private void initData() {
-        homeViewModel = new ViewModelProvider(this).get(HomeViewModel.class);
+        homeViewModel = new ViewModelProvider(this,factory).get(HomeViewModel.class);
 
-        homeViewModel.prepareSongListData(requireContext().getApplicationContext());
+        homeViewModel.observableSongListStore();
+        homeViewModel.refreshSongList();
     }
 
     private void observerData() {
+        homeViewModel.allPlaylistData.observe(getViewLifecycleOwner(), new Observer<List<PlaylistDTO>>() {
+            @Override
+            public void onChanged(List<PlaylistDTO> playlistDTOS) {
+                mSongListAdapter.submitList(new ArrayList<>(playlistDTOS));
+            }
+        });
         homeViewModel.captchaLiveData.observe(getViewLifecycleOwner(), new Observer<Resource<Boolean>>() {
             @Override
             public void onChanged(Resource<Boolean> booleanResource) {
@@ -127,14 +140,8 @@ public class HomeFragment extends Fragment {
                 }
             }
         });
-        AppSessionManager.Holder.instance.allPlaylistData
-                .observe(getViewLifecycleOwner(), new Observer<List<PlaylistDTO>>() {
-                    @Override
-                    public void onChanged(List<PlaylistDTO> playlistDTOS) {
-                        mSongListAdapter.submitList(new ArrayList<>(playlistDTOS));
-                    }
-                });
-        AppSessionManager.Holder.instance.userLoginLiveData.observe(getViewLifecycleOwner(), new Observer<Resource<UserLoginBean>>() {
+
+        homeViewModel.userLoginLiveData.observe(getViewLifecycleOwner(), new Observer<Resource<UserLoginBean>>() {
             @Override
             public void onChanged(Resource<UserLoginBean> userLoginBeanResource) {
                 if (userLoginBeanResource instanceof Resource.Success) {
@@ -142,7 +149,9 @@ public class HomeFragment extends Fragment {
                     if (mLoginDialog != null){
                         mLoginDialog.dismiss();
                     }
-                    initUser(userLoginBeanResource.getData());
+                    UserLoginBean user = userLoginBeanResource.getData();
+                    initUser(user);
+                    homeViewModel.refreshSongList();
                 } else if (userLoginBeanResource instanceof Resource.Loading) {
                     progressDialog.show();
                 } else if (userLoginBeanResource instanceof Resource.Error) {
@@ -172,7 +181,7 @@ public class HomeFragment extends Fragment {
         loginCaptchaBinding.loginGo.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                AppSessionManager.Holder.instance.login(
+                homeViewModel.login(
                         loginCaptchaBinding.loginUser.getText().toString(),
                         loginCaptchaBinding.loginPassword.getText().toString()
                 );

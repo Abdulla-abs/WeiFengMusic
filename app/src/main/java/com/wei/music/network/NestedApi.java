@@ -36,4 +36,7 @@ public interface NestedApi {
 
     @GET("/song/url")
     Single<Response<MusicUrlDTO>> getMusicUrl(@Query("id")Long musicId);
+
+    @GET("/like")
+    Single<BaseResp<String>> likeMusic(boolean like, int id);
 }

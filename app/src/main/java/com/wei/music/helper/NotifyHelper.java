@@ -8,7 +8,7 @@ import android.content.Intent;
 import android.widget.RemoteViews;
 import androidx.core.app.NotificationCompat;
 import com.wei.music.R;
-import com.wei.music.activity.MainActivity;
+import com.wei.music.activity.main.MainActivity;
 
 public class NotifyHelper {
     

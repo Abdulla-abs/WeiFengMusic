@@ -4,6 +4,8 @@ import android.support.v4.media.session.MediaSessionCompat;
 
 import com.wei.music.bean.MusicUrlDTO;
 import com.wei.music.bean.PlaylistDTO;
+import com.wei.music.bean.UserMusicListBean;
+import com.wei.music.service.wrapper.TypeWrapper;
 import com.wei.music.utils.Resource;
 
 import java.util.List;
@@ -12,7 +14,8 @@ import io.reactivex.rxjava3.core.Single;
 
 public abstract class MusicDataSource {
 
-    public abstract Single<List<MediaSessionCompat.QueueItem>> resetMusicSet(PlaylistDTO playlistDTO);
+    public abstract Single<List<PlaylistDTO>> fetchSongList(Integer userId);
+    public abstract Single<TypeWrapper<UserMusicListBean.PlayList>> fetchSongListDetail(PlaylistDTO playlistDTO);
 
     public abstract Single<Boolean> changeMusicLikeState(boolean like, int id);
 

@@ -24,6 +24,7 @@ import android.content.ComponentName;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.os.RemoteException;
 
+import com.wei.music.activity.main.MainActivity;
 import com.wei.music.utils.DefaultMediaControllerCompatCallback;
 import com.wei.music.utils.MMKVUtils;
 import com.wei.music.utils.ToolUtil;

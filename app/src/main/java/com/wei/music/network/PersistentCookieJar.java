@@ -7,12 +7,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import jakarta.inject.Inject;
 import okhttp3.Cookie;
 import okhttp3.CookieJar;
 import okhttp3.HttpUrl;
 
+
 public class PersistentCookieJar implements CookieJar {
     private final Map<HttpUrl, List<Cookie>> cookieStore = new ConcurrentHashMap<>();
+
+    @Inject
+    public PersistentCookieJar() {
+    }
 
     @Override
     public void saveFromResponse(@NonNull HttpUrl url, @NonNull List<Cookie> cookies) {

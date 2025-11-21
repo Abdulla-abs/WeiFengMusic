@@ -1,6 +1,5 @@
 package com.wei.music.database.dao;
 
-import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
@@ -9,6 +8,8 @@ import androidx.room.Query;
 import com.wei.music.bean.PlaylistDTO;
 
 import java.util.List;
+
+import io.reactivex.rxjava3.core.Observable;
 
 @Dao
 public interface UserSubCountDao {
@@ -20,7 +21,7 @@ public interface UserSubCountDao {
     void insert(PlaylistDTO playlist);
 
     @Query("SELECT * FROM PlaylistDTO ORDER BY createTime DESC")
-    LiveData<List<PlaylistDTO>> getAllPlaylists();
+    Observable<List<PlaylistDTO>> getAllPlaylists();
 
     @Query("DELETE FROM PlaylistDTO")
     void deleteAll();

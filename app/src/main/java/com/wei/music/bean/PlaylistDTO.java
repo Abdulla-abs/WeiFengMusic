@@ -56,8 +56,6 @@ public class PlaylistDTO {
      * containsTracks : false
      */
     private String subscribed;
-    @PrimaryKey
-    private long roomId;                    // 必须有 @PrimaryKey
 
     private CreatorDTO creator;
     private String artists;
@@ -94,6 +92,8 @@ public class PlaylistDTO {
     private boolean ordered;
     private int status;
     private String name;
+
+    @PrimaryKey
     private long id;
     private String coverImgId_str;
     private String sharedUsers;
@@ -104,14 +104,6 @@ public class PlaylistDTO {
     private List<String> subscribers;
     @Ignore
     private List<String> tags;
-
-    public long getRoomId() {
-        return roomId;
-    }
-
-    public void setRoomId(long roomId) {
-        this.roomId = roomId;
-    }
 
 
     public CreatorDTO getCreator() {

@@ -1,4 +1,4 @@
-package com.wei.music.activity;
+package com.wei.music.activity.main;
 
 import android.content.ComponentName;
 import android.content.Intent;
@@ -33,9 +33,13 @@ import com.bumptech.glide.request.target.SimpleTarget;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 import com.wei.music.R;
+import com.wei.music.activity.MusicListDialog;
+import com.wei.music.activity.PlayerActivity;
+import com.wei.music.activity.SearchActivity;
 import com.wei.music.fragment.AboutFragment;
 import com.wei.music.fragment.home.HomeFragment;
 import com.wei.music.fragment.MoreFragment;
+import com.wei.music.fragment.home.HomeViewModel;
 import com.wei.music.service.MusicService;
 import com.wei.music.utils.ColorUtil;
 import com.wei.music.utils.GlideLoadUtils;
@@ -46,13 +50,17 @@ import com.wei.music.view.MarqueeView;
 import java.util.Arrays;
 import java.util.List;
 
+import androidx.lifecycle.ViewModelProvider;
 import androidx.viewpager2.widget.ViewPager2;
 
 import java.util.ArrayList;
 
 import com.wei.music.adapter.MainPagerAdapter;
 
-public class MainActivity extends AppCompatActivity implements BottomNavigationView.OnNavigationItemSelectedListener, View.OnClickListener, DrawerLayout.DrawerListener, NavigationView.OnNavigationItemSelectedListener {
+import dagger.android.support.DaggerAppCompatActivity;
+import jakarta.inject.Inject;
+
+public class MainActivity extends DaggerAppCompatActivity implements BottomNavigationView.OnNavigationItemSelectedListener, View.OnClickListener, DrawerLayout.DrawerListener, NavigationView.OnNavigationItemSelectedListener {
 
     private final List<String> mTitles = Arrays.asList("Home", "More", "About");
     private final List<Fragment> mPagerFragments = new ArrayList<>();
@@ -68,12 +76,18 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
     private MediaControllerCompat mMediaController;
     private LinearLayout mPlayBarRoot;
 
+    @Inject
+    ViewModelProvider.Factory factory;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ToolUtil.setStatusBarColor(this, Color.TRANSPARENT, getResources().getColor(R.color.colorPrimary), true);
+
+        MainActivityViewModel mainViewModel = new ViewModelProvider(this, factory).get(MainActivityViewModel.class);
+
+        mainViewModel.init();
         initMediaBrowser();
         initView();
         InitData();
@@ -194,6 +208,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
     }
 
     private void InitData() {
+
         if (MMKVUtils.getBoolean("MusicId")) {
             GlideLoadUtils.setCircle(this, MMKVUtils.getString("MusicIcon"), mPlayBarIcon);
             mPlayBarTitle.setText(MMKVUtils.getString("MusicName") + "-" + MMKVUtils.getString("MusicSinger"));
