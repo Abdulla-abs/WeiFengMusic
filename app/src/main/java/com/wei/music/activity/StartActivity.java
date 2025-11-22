@@ -38,15 +38,7 @@ public class StartActivity extends AppCompatActivity {
         @Override
         public void onConnected() {
             MediaSessionCompat.Token token = mMediaBrowser.getSessionToken();
-            try {
-                mMediaController = new MediaControllerCompat(StartActivity.this, token);
-            } catch (RemoteException e) {
-                try {
-                    mMediaController = new MediaControllerCompat(StartActivity.this, token);
-                } catch (RemoteException e2) {
-                    return;
-                }
-            }
+            mMediaController = new MediaControllerCompat(StartActivity.this, token);
             mMediaController.registerCallback(new DefaultMediaControllerCompatCallback());
         }
     };

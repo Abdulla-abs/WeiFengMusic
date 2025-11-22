@@ -3,36 +3,23 @@ package com.wei.music.di;
 import android.app.Application;
 import android.content.Context;
 
-import com.wei.music.App;
-import com.wei.music.AppSessionManager;
-import com.wei.music.MusicSessionManager;
-import com.wei.music.database.AppDatabase;
-import com.wei.music.di.annotation.ApplicationContext;
-
 import dagger.Module;
 import dagger.Provides;
+import dagger.hilt.InstallIn;
+import dagger.hilt.android.qualifiers.ApplicationContext;
+import dagger.hilt.components.SingletonComponent;
+
 import jakarta.inject.Singleton;
 
 @Module
+@InstallIn(SingletonComponent.class)  // Application 级别
 public class AppModule {
 
-    // AppModule.java
+    // 提供 Application 本身（很多地方需要）
     @Provides
-    @ApplicationContext
-    // 这里用你自己定义的
-    Context provideApplicationContext(Application application) {
-        return application;
+    @Singleton
+    public static Application provideApplication(@ApplicationContext Context context) {
+        return (Application) context.getApplicationContext();
     }
 
-//    @Singleton
-//    @Provides
-//    public AppSessionManager providerAppSessionManager(){
-//        return new AppSessionManager();
-//    }
-//
-//    @Singleton
-//    @Provides
-//    public MusicSessionManager providerMusicSessionManager(){
-//        return new MusicSessionManager()
-//    }
 }

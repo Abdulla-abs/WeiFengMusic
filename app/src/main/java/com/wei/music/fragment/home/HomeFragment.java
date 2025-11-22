@@ -37,20 +37,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import dagger.android.support.DaggerFragment;
-import jakarta.inject.Inject;
+import javax.inject.Inject;
 
-public class HomeFragment extends DaggerFragment {
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
+public class HomeFragment extends Fragment {
     private static final String TAG = "HomeFragment";
+
     private HomeViewModel homeViewModel;
     private ProgressDialog progressDialog;
     private com.wei.music.databinding.HomeFragmentBinding binding;
     private MyRecycleAdapter mSongListAdapter;
     private BottomSheetDialog mLoginDialog;
-
-    @Inject
-    ViewModelProvider.Factory factory;
-
 
     @Nullable
     @Override
@@ -62,14 +61,16 @@ public class HomeFragment extends DaggerFragment {
 
     private void initView() {
         progressDialog = new ProgressDialog(requireContext());
-        binding.recycleviewHome.setLayoutManager(
-                new LinearLayoutManager(
-                        requireContext(),
-                        LinearLayoutManager.VERTICAL,
-                        false
-                )
+        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(
+                requireContext(),
+                LinearLayoutManager.VERTICAL,
+                false
         );
-        mSongListAdapter = new MyRecycleAdapter();
+        linearLayoutManager.setReverseLayout(false);
+        linearLayoutManager.setStackFromEnd(false);
+        binding.recycleviewHome.setLayoutManager(linearLayoutManager);
+
+        mSongListAdapter = new MyRecycleAdapter(requireContext());
         binding.recycleviewHome.setAdapter(mSongListAdapter);
         mSongListAdapter.setListener(new MyRecycleAdapter.OnItemClickListener() {
             @Override
@@ -113,7 +114,7 @@ public class HomeFragment extends DaggerFragment {
     }
 
     private void initData() {
-        homeViewModel = new ViewModelProvider(this,factory).get(HomeViewModel.class);
+        homeViewModel = new ViewModelProvider(this).get(HomeViewModel.class);
 
         homeViewModel.observableSongListStore();
         homeViewModel.refreshSongList();
@@ -123,14 +124,14 @@ public class HomeFragment extends DaggerFragment {
         homeViewModel.allPlaylistData.observe(getViewLifecycleOwner(), new Observer<List<PlaylistDTO>>() {
             @Override
             public void onChanged(List<PlaylistDTO> playlistDTOS) {
-                mSongListAdapter.submitList(new ArrayList<>(playlistDTOS));
+                mSongListAdapter.onDataSetChange(playlistDTOS);
             }
         });
         homeViewModel.captchaLiveData.observe(getViewLifecycleOwner(), new Observer<Resource<Boolean>>() {
             @Override
             public void onChanged(Resource<Boolean> booleanResource) {
                 if (booleanResource instanceof Resource.Error) {
-                    Toast.makeText(requireContext(), "验证码已发送，请注意查收", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), booleanResource.getMessage(), Toast.LENGTH_SHORT).show();
                     progressDialog.dismiss();
                 } else if (booleanResource instanceof Resource.Loading) {
                     progressDialog.show();
@@ -146,7 +147,7 @@ public class HomeFragment extends DaggerFragment {
             public void onChanged(Resource<UserLoginBean> userLoginBeanResource) {
                 if (userLoginBeanResource instanceof Resource.Success) {
                     progressDialog.dismiss();
-                    if (mLoginDialog != null){
+                    if (mLoginDialog != null) {
                         mLoginDialog.dismiss();
                     }
                     UserLoginBean user = userLoginBeanResource.getData();

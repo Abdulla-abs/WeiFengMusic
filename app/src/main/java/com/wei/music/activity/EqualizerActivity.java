@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.wei.music.R;
+import com.wei.music.service.MusicService;
 import com.wei.music.utils.ToolUtil;
 import com.wei.music.view.EqualizerView;
 
@@ -41,7 +42,7 @@ public class EqualizerActivity extends AppCompatActivity {
         setContentView(R.layout.activity_equalizer);
         SwitchMaterial equalizerSwitch = findViewById(R.id.activityequalizerButton1);
         mEqualizerView = findViewById(R.id.equalizerview);
-        audioId = ToolUtil.readInt("AudioId");
+//        audioId = ToolUtil.readInt("AudioId");
 
         equalizerSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -60,7 +61,7 @@ public class EqualizerActivity extends AppCompatActivity {
         mEqualizerView.post(new Runnable() {
             @Override
             public void run() {
-                mEqualizerView.initAudioSessionId(audioId);
+                mEqualizerView.initAudioSessionId(MusicService.FIXED_AUDIO_SESSION_ID);
             }
         });
     }

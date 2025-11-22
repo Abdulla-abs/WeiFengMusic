@@ -6,12 +6,15 @@ import com.wei.music.App;
 import com.wei.music.database.AppDatabase;
 import com.wei.music.database.dao.UserDao;
 import com.wei.music.database.dao.UserSubCountDao;
-import com.wei.music.di.annotation.ApplicationContext;
 
 import dagger.Module;
 import dagger.Provides;
+import dagger.hilt.InstallIn;
+import dagger.hilt.android.qualifiers.ApplicationContext;
+import dagger.hilt.components.SingletonComponent;
 
 @Module
+@InstallIn(SingletonComponent.class)
 public abstract class DatabaseModule {
 
     @Provides

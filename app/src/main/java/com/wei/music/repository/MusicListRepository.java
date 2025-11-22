@@ -63,14 +63,10 @@ public class MusicListRepository {
      */
     public Single<List<PlaylistDTO>> fetchLocalSongList() {
         return localMusicDataSource.fetchSongList(null)
-                .map(new io.reactivex.rxjava3.functions.Function<List<PlaylistDTO>, List<PlaylistDTO>>() {
-                    @Override
-                    public List<PlaylistDTO> apply(List<PlaylistDTO> playlistDTOS) throws Throwable {
-                        subCountDao.insertAll(playlistDTOS);
-                        return playlistDTOS;
-                    }
-                })
-                .subscribeOn(Schedulers.io());
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .doOnSuccess(subCountDao::insertAll)
+                .onErrorReturnItem(Collections.emptyList());
     }
 
     /**
@@ -80,14 +76,10 @@ public class MusicListRepository {
      */
     private Single<List<PlaylistDTO>> fetchRemoteSongList(Integer userId) {
         return remoteMusicDataSource.fetchSongList(userId)
-                .map(new io.reactivex.rxjava3.functions.Function<List<PlaylistDTO>, List<PlaylistDTO>>() {
-                    @Override
-                    public List<PlaylistDTO> apply(List<PlaylistDTO> playlistDTOS) throws Throwable {
-                        subCountDao.insertAll(playlistDTOS);
-                        return playlistDTOS;
-                    }
-                })
-                .subscribeOn(Schedulers.io());
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .doOnSuccess(subCountDao::insertAll)
+                .onErrorReturnItem(Collections.emptyList());
     }
 
     /**
@@ -97,19 +89,8 @@ public class MusicListRepository {
      */
     public Single<List<PlaylistDTO>> fetchAllSongList(Integer userId) {
         return Single.zip(
-                fetchLocalSongList().onErrorReturn(new io.reactivex.rxjava3.functions.Function<Throwable, List<PlaylistDTO>>() {
-                    @Override
-                    public List<PlaylistDTO> apply(Throwable throwable) throws Throwable {
-                        return Collections.emptyList();
-                    }
-                }),
-                fetchRemoteSongList(userId)
-                        .onErrorReturn(new io.reactivex.rxjava3.functions.Function<Throwable, List<PlaylistDTO>>() {
-                            @Override
-                            public List<PlaylistDTO> apply(Throwable throwable) throws Throwable {
-                                return Collections.emptyList();
-                            }
-                        }),
+                fetchLocalSongList(),
+                fetchRemoteSongList(userId),
                 new BiFunction<List<PlaylistDTO>, List<PlaylistDTO>, List<PlaylistDTO>>() {
                     @Override
                     public List<PlaylistDTO> apply(List<PlaylistDTO> playlistDTOS, List<PlaylistDTO> playlistDTOS2) throws Throwable {

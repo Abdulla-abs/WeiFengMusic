@@ -16,10 +16,13 @@ import com.wei.music.utils.ViewModelScopeProviderUtil;
 import java.util.Collections;
 import java.util.List;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.lifecycle.HiltViewModel;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.functions.Consumer;
-import jakarta.inject.Inject;
 
+@HiltViewModel
 public class MusicListViewModel extends ViewModelScopeProviderUtil.ScopedViewModel {
 
     private final MusicListRepository repository;

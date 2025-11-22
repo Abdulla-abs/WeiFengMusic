@@ -5,17 +5,15 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.wei.music.bean.UserLoginBean;
 import com.wei.music.repository.UserRepository;
-import com.wei.music.utils.AudioFileFetcher;
 import com.wei.music.utils.Resource;
 
-import java.util.List;
-
 import javax.inject.Inject;
+import javax.inject.Singleton;
 
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.functions.Consumer;
-import jakarta.inject.Singleton;
 
+@Singleton
 public class AppSessionManager {
 
     private final MutableLiveData<Resource<UserLoginBean>> _userLoginLiveData = new MutableLiveData<>(new Resource.Empty<>());

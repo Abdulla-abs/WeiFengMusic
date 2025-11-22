@@ -41,7 +41,7 @@ public class MyRecycleAdapter2 extends RecyclerView.Adapter<MyRecycleAdapter2.Vi
         SongListBean songListBean = songListBeans.get(position);
         holder.mTitle.setText(songListBean.getTitle());
         holder.mNumber.setText(songListBean.getSize() + " 首");
-        GlideLoadUtils.setRound(holder.itemView.getContext(), songListBean.getImage(), 8, holder.mImage);
+        GlideLoadUtils.setRound(songListBean.getImage(), 8, holder.mImage);
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

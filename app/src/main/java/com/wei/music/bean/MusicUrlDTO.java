@@ -67,7 +67,7 @@ public class MusicUrlDTO {
     }
 
     public static class DataDTO {
-        private int id;
+        private long id;
         private String url;
         private int br;
         private int size;
@@ -119,11 +119,11 @@ public class MusicUrlDTO {
         private String auEff;
         private String immerseType;
 
-        public int getId() {
+        public long getId() {
             return id;
         }
 
-        public void setId(int id) {
+        public void setId(long id) {
             this.id = id;
         }
 

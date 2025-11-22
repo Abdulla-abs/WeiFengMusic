@@ -9,16 +9,20 @@ import com.wei.music.network.WeiApi;
 
 import java.util.concurrent.TimeUnit;
 
+import javax.inject.Singleton;
+
 import dagger.Module;
 import dagger.Provides;
+import dagger.hilt.InstallIn;
+import dagger.hilt.components.SingletonComponent;
 import hu.akarnokd.rxjava3.retrofit.RxJava3CallAdapterFactory;
-import jakarta.inject.Singleton;
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 @Module
+@InstallIn(SingletonComponent.class)
 public abstract class NetWorkModule {
 
     private static final String LOGGING_URL = "https://apis.netstart.cn/music/";
@@ -47,7 +51,7 @@ public abstract class NetWorkModule {
                 .build();
     }
 
-//    @Singleton
+    @Singleton
     @Provides
     public static LoginApi providerLoginApi(OkHttpClient okHttpClient) {
         return new Retrofit.Builder()
@@ -59,7 +63,7 @@ public abstract class NetWorkModule {
                 .create(LoginApi.class);
     }
 
-//    @Singleton
+    @Singleton
     @Provides
     public static NestedApi providerNestedApi(OkHttpClient okHttpClient) {
         return new Retrofit.Builder()
@@ -71,7 +75,7 @@ public abstract class NetWorkModule {
                 .create(NestedApi.class);
     }
 
-//    @Singleton
+    @Singleton
     @Provides
     public static WeiApi providerWeiApi(OkHttpClient okHttpClient) {
         return new Retrofit.Builder()

@@ -9,7 +9,6 @@ import com.wei.music.App;
 import com.wei.music.bean.MusicUrlDTO;
 import com.wei.music.bean.PlaylistDTO;
 import com.wei.music.bean.UserMusicListBean;
-import com.wei.music.di.annotation.ApplicationContext;
 import com.wei.music.service.wrapper.TypeWrapper;
 import com.wei.music.utils.AudioFileFetcher;
 import com.wei.music.utils.Resource;
@@ -23,13 +22,14 @@ import java.util.concurrent.Callable;
 import java.util.function.Predicate;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 
+import dagger.hilt.android.qualifiers.ApplicationContext;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleSource;
 import io.reactivex.rxjava3.functions.Function;
-import jakarta.inject.Singleton;
 
-//@Singleton
+@Singleton
 public class LocalSongDataSource extends MusicDataSource {
 
     private final WeakReference<Context> application;
@@ -56,16 +56,28 @@ public class LocalSongDataSource extends MusicDataSource {
 
     @Override
     public Single<List<PlaylistDTO>> fetchSongList(Integer userId) {
-        return Single.fromCallable(
-                new Callable<List<AudioFileFetcher.AudioFile>>() {
-                    @Override
-                    public List<AudioFileFetcher.AudioFile> call() throws Exception {
-                        List<AudioFileFetcher.AudioFile> audioFiles = AudioFileFetcher.getAudioFiles(application.get());
-                        _localAudioFiles.postValue(audioFiles);
-                        return audioFiles;
+        /**
+         * 这个本地扫描会调用很多次
+         * 为了减缓系统数据库扫描，尝试做数据缓存，获取一次本地数据后便不再重复获取
+         */
+        List<AudioFileFetcher.AudioFile> localAudioFilesValue = _localAudioFiles.getValue();
+        Single<List<AudioFileFetcher.AudioFile>> runnable;
+        if (localAudioFilesValue != null && !localAudioFilesValue.isEmpty()) {
+            //若有缓存，直接返回缓存
+            runnable = Single.just(localAudioFilesValue);
+        } else {
+            runnable = Single.fromCallable(
+                    new Callable<List<AudioFileFetcher.AudioFile>>() {
+                        @Override
+                        public List<AudioFileFetcher.AudioFile> call() throws Exception {
+                            List<AudioFileFetcher.AudioFile> audioFiles = AudioFileFetcher.getAudioFiles(application.get());
+                            _localAudioFiles.postValue(audioFiles);
+                            return audioFiles;
+                        }
                     }
-                }
-        ).flatMap(new Function<List<AudioFileFetcher.AudioFile>, SingleSource<List<PlaylistDTO>>>() {
+            );
+        }
+        return runnable.flatMap(new Function<List<AudioFileFetcher.AudioFile>, SingleSource<List<PlaylistDTO>>>() {
             @Override
             public SingleSource<List<PlaylistDTO>> apply(List<AudioFileFetcher.AudioFile> audioFiles) throws Throwable {
                 defaultLocalPlayList.setTrackCount(audioFiles.size());
@@ -99,6 +111,7 @@ public class LocalSongDataSource extends MusicDataSource {
         }
 
         defaultLocalPlayList.setTrackCount(trackList.size());
+        defaultLocalPlayListDetail.setTracks(trackList);
         return Single.just(TypeWrapper.local(defaultLocalPlayListDetail));
 
 //        List<MediaSessionCompat.QueueItem> musicList = new ArrayList<>();

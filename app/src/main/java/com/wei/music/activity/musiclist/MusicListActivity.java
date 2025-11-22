@@ -4,6 +4,7 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.RemoteException;
@@ -18,22 +19,26 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.res.ResourcesCompat;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.blankj.utilcode.util.GsonUtils;
+import com.blankj.utilcode.util.LogUtils;
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.request.animation.GlideAnimation;
-import com.bumptech.glide.request.target.SimpleTarget;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.google.android.material.appbar.AppBarLayout;
-import com.google.gson.Gson;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import android.widget.FrameLayout;
 import android.widget.Toast;
@@ -41,23 +46,28 @@ import android.widget.Toast;
 import com.wei.music.MusicSessionManager;
 import com.wei.music.R;
 import com.wei.music.activity.MusicListDialog;
-import com.wei.music.activity.PlayerActivity;
+import com.wei.music.activity.play.PlayerActivity;
 import com.wei.music.adapter.MusicListAdapter;
+import com.wei.music.bean.CreatorDTO;
 import com.wei.music.bean.PlaylistDTO;
 import com.wei.music.bean.UserMusicListBean;
+import com.wei.music.mapper.MediaMetadataInfo;
+import com.wei.music.mapper.MediaMetadataMapper;
 import com.wei.music.service.musicaction.MusicActionContract;
 import com.wei.music.utils.GlideLoadUtils;
 import com.wei.music.utils.Resource;
 import com.wei.music.utils.ToolUtil;
-import com.wei.music.utils.OkHttpUtil;
 import com.wei.music.view.MarqueeView;
 import com.wei.music.service.MusicService;
 import com.wei.music.utils.ColorUtil;
 import com.wei.music.utils.AppBarStateChangeListener;
 
-import jakarta.inject.Inject;
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
 
 
+@AndroidEntryPoint
 public class MusicListActivity extends AppCompatActivity implements View.OnClickListener, MusicListAdapter.OnItemClick {
 
     public static final String INTENT_SONG_LIST = "IntentSongList";
@@ -65,185 +75,32 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
     private FrameLayout mPlayBarView;
     private ImageView mMusicListBackground, mMusicListIcon, mPlayBarIcon, mPlayBarPause, mPlayBarList;
     private RecyclerView mRecyclerView;
-    private MusicListAdapter mMusicListAdpater;
-    private Gson mGson = new Gson();
+    private MusicListAdapter musicListAdapter;
     private MarqueeView mTitleView;
     private TextView mMusicListName, mMusicListMsg, mPlayBarTitle;
     private AppBarLayout mAppBarLayout;
-
     private MediaBrowserCompat mMediaBrowser;
     private MediaControllerCompat mMediaController;
 
-    private ToolUtil mToolUtil;
-    private GlideLoadUtils mGlideLoadUtils;
-    private OkHttpUtil mOkHttpUtil;
-
-    private Bitmap mBackBitmap = null;
     private int[] colors = null;
 
-    private MusicListViewModel viewModel;
+    MusicListViewModel viewModel;
 
     @Inject
-    ViewModelProvider.Factory factory;
-    @Inject
     MusicSessionManager musicSessionManager;
+    private PlaylistDTO playlistDTO;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_musiclist);
-        ToolUtil.setStatusBarColor(this, Color.TRANSPARENT, getResources().getColor(R.color.colorPrimary), true);
-        mGlideLoadUtils = GlideLoadUtils.getInstance();
-        mOkHttpUtil = OkHttpUtil.getInstance();
+        ToolUtil.setStatusBarColor(this, Color.TRANSPARENT, getResources().getColor(R.color.colorPrimary, getTheme()), true);
+
+        viewModel = new ViewModelProvider(this).get(MusicListViewModel.class);
+
         initView();
         initMediaBrowser();
         initData();
-    }
-
-    private void initMediaBrowser() {
-        mMediaBrowser = new MediaBrowserCompat(this,
-                new ComponentName(this, MusicService.class),
-                connectionCallback, null);
-        mMediaBrowser.connect();
-    }
-
-    private final MediaBrowserCompat.ConnectionCallback connectionCallback = new MediaBrowserCompat.ConnectionCallback() {
-        @Override
-        public void onConnected() {
-            MediaSessionCompat.Token token = mMediaBrowser.getSessionToken();
-            try {
-                mMediaController = new MediaControllerCompat(MusicListActivity.this, token);
-            } catch (RemoteException e) {
-            }
-            mMediaController.registerCallback(mMediaCallback);
-            Optional.ofNullable(GsonUtils.fromJson(getIntent().getStringExtra(INTENT_SONG_LIST), PlaylistDTO.class))
-                    .ifPresent(new Consumer<PlaylistDTO>() {
-                        @Override
-                        public void accept(PlaylistDTO playlistDTO) {
-                            initData(playlistDTO, ToolUtil.readString("UserCookie"));
-                        }
-                    });
-
-        }
-    };
-
-    private MediaControllerCompat.Callback mMediaCallback = new MediaControllerCompat.Callback() {
-
-        @Override
-        public void onSessionEvent(String event, Bundle extras) {
-            super.onSessionEvent(event, extras);
-        }
-
-        @Override
-        public void onMetadataChanged(MediaMetadataCompat metadata) {
-            super.onMetadataChanged(metadata);
-            initData();
-        }
-
-        @Override
-        public void onPlaybackStateChanged(PlaybackStateCompat state) {
-            super.onPlaybackStateChanged(state);
-            mPlayBarPause.setImageDrawable((state.getState() == PlaybackStateCompat.STATE_PLAYING) ? getResources().getDrawable(R.drawable.ic_play) : getResources().getDrawable(R.drawable.ic_pause));
-        }
-
-        @Override
-        public void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {
-            super.onQueueChanged(queue);
-//            mMusicListAdpater = new MusicListAdapter(MusicListActivity.this, queue);
-//            mRecyclerView.setAdapter(mMusicListAdpater);
-//            mMusicListAdpater.OnClickListener(MusicListActivity.this);
-        }
-    };
-
-    public void getBackBitmap() {
-        if (mBackBitmap == null) {
-            mGlideLoadUtils.getBitmap(this, mToolUtil.readString("SongListIcon"), 300, new SimpleTarget<Bitmap>() {
-                @Override
-                public void onResourceReady(Bitmap bitmap, GlideAnimation<? super Bitmap> glideAnimation) {
-                    mBackBitmap = bitmap;
-                    colors = ColorUtil.getColor(mBackBitmap);
-                    mMusicListBackground.setImageBitmap(mBackBitmap);
-                    mMusicListName.setTextColor(colors[1]);
-                    mMusicListMsg.setTextColor(colors[1]);
-                    mToolUtil.setStatusBarTextColor(MusicListActivity.this, colors[0]);
-                }
-            });
-            return;
-        }
-        mToolUtil.setStatusBarTextColor(this, colors[0]);
-    }
-
-    private void initData() {
-        viewModel = new ViewModelProvider(this, factory).get(MusicListViewModel.class);
-        PlaylistDTO playlistDTO = GsonUtils.fromJson(getIntent().getStringExtra(INTENT_SONG_LIST), PlaylistDTO.class);
-
-        viewModel.fetchPlayListDetail(playlistDTO);
-
-        viewModel.playListDetail.observe(this, new Observer<Resource<UserMusicListBean.PlayList>>() {
-            @Override
-            public void onChanged(Resource<UserMusicListBean.PlayList> playListResource) {
-
-            }
-        });
-        viewModel.playListDetailQueue.observe(this, new Observer<List<MediaSessionCompat.QueueItem>>() {
-            @Override
-            public void onChanged(List<MediaSessionCompat.QueueItem> queueItems) {
-                mMusicListAdpater = new MusicListAdapter(MusicListActivity.this, queueItems);
-                mRecyclerView.setAdapter(mMusicListAdpater);
-            }
-        });
-
-        mMusicListAdpater.OnClickListener(MusicListActivity.this);
-
-        if (mToolUtil.readBool("MusicId")) {
-            mGlideLoadUtils.setCircle(this, mToolUtil.readString("MusicIcon"), mPlayBarIcon);
-            mPlayBarTitle.setText(mToolUtil.readString("MusicName") + "-" + mToolUtil.readString("MusicSinger"));
-            Glide.with(getApplicationContext()).load(mToolUtil.readString("MusicIcon")).asBitmap().into(new SimpleTarget<Bitmap>() {
-                @Override
-                public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
-                    int[] colors = ColorUtil.getColor(resource);
-                    GradientDrawable mGroupDrawable = (GradientDrawable) mPlayBarRoot.getBackground();
-                    mGroupDrawable.setColor(colors[1]);
-                    mPlayBarTitle.setTextColor(colors[0]);
-                    mPlayBarPause.setColorFilter(colors[0]);
-                    mPlayBarList.setColorFilter(colors[0]);
-                }
-            });
-        }
-    }
-
-    public void initData(final PlaylistDTO playlistDTO, final String cookie) {
-        mMusicListName.setText(playlistDTO.getName());
-        GlideLoadUtils.setRound(MusicListActivity.this, playlistDTO.getCoverImgUrl(), 8, mMusicListIcon);
-        getBackBitmap();
-
-        Bundle bundle = new Bundle();
-        bundle.putString(MusicService.ACTION_SONG_LIST, getIntent().getStringExtra(INTENT_SONG_LIST));
-        bundle.putString("cookie", cookie);
-        mMediaController.getTransportControls().sendCustomAction(MusicService.ACTION_CHANGE_SONG_LIST, bundle);
-//        if ("-1".equals(id)){
-//
-//        }else {
-//            OkHttpUtil.get(this, CloudMusicApi.SONG_LIST_DATA + id, cookie, mOkHttpUtil.DAY, new Callback() {
-//
-//                @Override
-//                public void onFailure(Call p1, IOException p2) {
-//                }
-//
-//                @Override
-//                public void onResponse(Call p1, Response response) throws IOException {
-//                    UserMusicListBean usermusicbean = new UserMusicListBean();
-//                    usermusicbean = mGson.fromJson(response.body().string(), UserMusicListBean.class);
-//                    runOnUiThread(new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            //mMusicListMsg.setText(usermusicbean.playlist.description);
-//                        }
-//                    });
-//                }
-//            });
-//        }
-
     }
 
     public void initView() {
@@ -256,11 +113,12 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
                 switch (state) {
                     case EXPANDED:
                         mTitleView.setText("");
-                        getBackBitmap();
+                        resetSongListBackground();
                         break;
                     case COLLAPSED:
                         mTitleView.setText(mMusicListName.getText());
-                        ToolUtil.setStatusBarTextColor(MusicListActivity.this, getResources().getColor(R.color.colorPrimary));
+                        ToolUtil.setStatusBarTextColor(MusicListActivity.this,
+                                getResources().getColor(R.color.colorPrimary, getTheme()));
                         break;
                     case INTERMEDIATE:
                         break;
@@ -285,6 +143,151 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
         mPlayBarView = (FrameLayout) findViewById(R.id.playbar_view);
         mPlayBarView.setOnClickListener(this);
     }
+
+    private void initMediaBrowser() {
+        mMediaBrowser = new MediaBrowserCompat(this,
+                new ComponentName(this, MusicService.class),
+                connectionCallback, null);
+        mMediaBrowser.connect();
+    }
+
+    private final MediaBrowserCompat.ConnectionCallback connectionCallback = new MediaBrowserCompat.ConnectionCallback() {
+        @Override
+        public void onConnected() {
+            MediaSessionCompat.Token token = mMediaBrowser.getSessionToken();
+            mMediaController = new MediaControllerCompat(MusicListActivity.this, token);
+            mMediaController.registerCallback(mMediaCallback);
+            onMusicServiceConnected();
+        }
+    };
+
+    private final MediaControllerCompat.Callback mMediaCallback = new MediaControllerCompat.Callback() {
+
+        @Override
+        public void onSessionEvent(String event, Bundle extras) {
+            super.onSessionEvent(event, extras);
+        }
+
+        @Override
+        public void onMetadataChanged(MediaMetadataCompat metadata) {
+            super.onMetadataChanged(metadata);
+            onMusicMetaDataChange(metadata);
+        }
+
+        @Override
+        public void onPlaybackStateChanged(PlaybackStateCompat state) {
+            super.onPlaybackStateChanged(state);
+            mPlayBarPause.setImageDrawable(
+                    (state.getState() == PlaybackStateCompat.STATE_PLAYING) ?
+                            ResourcesCompat.getDrawable(getResources(), R.drawable.ic_play, getTheme()) :
+                            ResourcesCompat.getDrawable(getResources(), R.drawable.ic_pause, getTheme())
+            );
+        }
+
+        @Override
+        public void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {
+            super.onQueueChanged(queue);
+        }
+    };
+
+    public void resetSongListBackground() {
+        Optional.ofNullable(playlistDTO)
+                .map(new Function<PlaylistDTO, CreatorDTO>() {
+                    @Override
+                    public CreatorDTO apply(PlaylistDTO playlistDTO) {
+                        return playlistDTO.getCreator();
+                    }
+                })
+                .ifPresent(new Consumer<CreatorDTO>() {
+                    @Override
+                    public void accept(CreatorDTO creatorDTO) {
+                        GlideLoadUtils.loadBitmap(
+                                MusicListActivity.this,
+                                creatorDTO.getBackgroundUrl(),
+                                1,  // radiusDp = 0（不需要圆角）
+                                300, // blurRadius = 300（高斯模糊强度）
+                                new CustomTarget<Bitmap>() {
+
+                                    @Override
+                                    public void onResourceReady(@NonNull Bitmap resource,
+                                                                @Nullable Transition<? super Bitmap> transition) {
+                                        colors = ColorUtil.getColor(resource);
+                                        mMusicListBackground.setImageBitmap(resource);
+                                        mMusicListName.setTextColor(colors[1]);
+                                        mMusicListMsg.setTextColor(colors[1]);
+                                        ToolUtil.setStatusBarTextColor(MusicListActivity.this, colors[0]);
+                                    }
+
+                                    @Override
+                                    public void onLoadCleared(@Nullable Drawable placeholder) {
+
+                                    }
+                                }
+                        );
+                    }
+                });
+    }
+
+    private void initData() {
+        playlistDTO = GsonUtils.fromJson(getIntent().getStringExtra(INTENT_SONG_LIST),
+                PlaylistDTO.class);
+
+        viewModel.fetchPlayListDetail(playlistDTO);
+
+        viewModel.playListDetail.observe(this, new Observer<Resource<UserMusicListBean.PlayList>>() {
+            @Override
+            public void onChanged(Resource<UserMusicListBean.PlayList> playListResource) {
+
+            }
+        });
+        viewModel.playListDetailQueue.observe(this, new Observer<List<MediaSessionCompat.QueueItem>>() {
+            @Override
+            public void onChanged(List<MediaSessionCompat.QueueItem> queueItems) {
+                musicListAdapter.setQueueItems(queueItems);
+            }
+        });
+        musicListAdapter = new MusicListAdapter(MusicListActivity.this);
+        musicListAdapter.OnClickListener(MusicListActivity.this);
+        mRecyclerView.setAdapter(musicListAdapter);
+    }
+
+    private void onMusicMetaDataChange(MediaMetadataCompat metadata) {
+        if (metadata == null) return;
+        MediaMetadataInfo music = MediaMetadataMapper.mapper(metadata);
+
+        GlideLoadUtils.setCircle(this, music.getAlbum(), mPlayBarIcon);
+        mPlayBarTitle.setText(music.getTitle() + "-" + music.getArtist());
+        Glide.with(this)  // Activity 用 this 最安全，Hilt 完全兼容
+                .asBitmap()
+                .load(music.getAlbum())
+                .into(new CustomTarget<Bitmap>() {  // ← 改成 CustomTarget
+                    @Override
+                    public void onResourceReady(@NonNull Bitmap resource,
+                                                @Nullable Transition<? super Bitmap> transition) {
+                        int[] colors = ColorUtil.getColor(resource);
+                        GradientDrawable mGroupDrawable = (GradientDrawable) mPlayBarRoot.getBackground();
+                        if (mGroupDrawable != null) {
+                            mGroupDrawable.setColor(colors[1]);
+                        }
+                        mPlayBarTitle.setTextColor(colors[0]);
+                        mPlayBarPause.setColorFilter(colors[0]);
+                        mPlayBarList.setColorFilter(colors[0]);
+                    }
+
+                    @Override
+                    public void onLoadCleared(@Nullable Drawable placeholder) {
+                        // 可选：资源被清除时（比如 detach）执行清理
+                    }
+                });
+
+    }
+
+    public void onMusicServiceConnected() {
+        mMusicListName.setText(playlistDTO.getName());
+        GlideLoadUtils.setRound(playlistDTO.getCoverImgUrl(), 8, mMusicListIcon);
+        resetSongListBackground();
+    }
+
 
     @Override
     public void onClick(View v) {
@@ -314,12 +317,14 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
                 queueItems,
                 index
         ));
-//        mMediaController.getTransportControls().skipToQueueItem(position);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (mMediaController != null) {
+            mMediaController.unregisterCallback(mMediaCallback);
+        }
         if (mMediaBrowser != null) {
             mMediaBrowser.disconnect();
             Glide.get(this).clearMemory();

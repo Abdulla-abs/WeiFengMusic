@@ -1,4 +1,5 @@
 package com.wei.music.activity;
+
 import android.content.ComponentName;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -10,17 +11,24 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.view.View;
 import android.widget.LinearLayout;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.bumptech.glide.Glide;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.wei.music.R;
 import com.wei.music.adapter.MusicListDialogAdapter;
 import com.wei.music.service.MusicService;
 import com.wei.music.utils.ToolUtil;
+
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 
 public class MusicListDialog extends AppCompatActivity implements MusicListDialogAdapter.OnItemClick {
@@ -28,7 +36,7 @@ public class MusicListDialog extends AppCompatActivity implements MusicListDialo
     private RecyclerView mRecyclerView;
 
     private MediaBrowserCompat mMediaBrowser;
-    private MediaControllerCompat mMediaController;  
+    private MediaControllerCompat mMediaController;
 
 
     private BottomSheetBehavior mBottomSheet;
@@ -54,23 +62,23 @@ public class MusicListDialog extends AppCompatActivity implements MusicListDialo
         mRecyclerView = (RecyclerView) findViewById(R.id.dialog_recycler);
         LinearLayoutManager manager = new LinearLayoutManager(this);
         manager.setOrientation(LinearLayoutManager.VERTICAL);
-        mRecyclerView.setLayoutManager(manager);  
+        mRecyclerView.setLayoutManager(manager);
         mRecyclerView.setOnScrollListener(new RecyclerView.OnScrollListener() {
-                @Override
-                public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                    super.onScrolled(recyclerView, dx, dy);
-                    if (mShouldScroll) {
-                        mShouldScroll = false;
-                        smoothMoveToPosition(mToPosition);
-                    }
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                if (mShouldScroll) {
+                    mShouldScroll = false;
+                    smoothMoveToPosition(mToPosition);
                 }
-            });
+            }
+        });
     }
-    
+
     private BottomSheetBehavior.BottomSheetCallback mBottomSheetCallback = new BottomSheetBehavior.BottomSheetCallback() {
         @Override
         public void onStateChanged(@NonNull View bottomSheet, int newState) {
-            if(newState == BottomSheetBehavior.STATE_HIDDEN) {
+            if (newState == BottomSheetBehavior.STATE_HIDDEN) {
                 finish();
             }
         }
@@ -83,8 +91,8 @@ public class MusicListDialog extends AppCompatActivity implements MusicListDialo
 
     private void initMediaBrowser() {
         mMediaBrowser = new MediaBrowserCompat(this,
-                                               new ComponentName(this, MusicService.class),
-                                               connectionCallback, null);
+                new ComponentName(this, MusicService.class),
+                connectionCallback, null);
         mMediaBrowser.connect();
     }
 
@@ -93,12 +101,10 @@ public class MusicListDialog extends AppCompatActivity implements MusicListDialo
         @Override
         public void onConnected() {
             MediaSessionCompat.Token token = mMediaBrowser.getSessionToken();
-            try {
-                mMediaController = new MediaControllerCompat(MusicListDialog.this, token);
-            } catch (RemoteException e) {}
+            mMediaController = new MediaControllerCompat(MusicListDialog.this, token);
             mMediaController.registerCallback(mMediaCallback);
-            mMediaBrowser.unsubscribe("MusicList");
-            mMediaBrowser.subscribe("MusicList", mCallback);
+
+            mMediaBrowser.subscribe(MusicService.MUSIC_ALL, mCallback);
         }
     };
 
@@ -132,12 +138,16 @@ public class MusicListDialog extends AppCompatActivity implements MusicListDialo
         @Override
         public void onChildrenLoaded(String parentId, List<MediaBrowserCompat.MediaItem> children) {
             super.onChildrenLoaded(parentId, children);
-            if(children.size() == 0)
+            if (children.isEmpty())
                 return;
             mMusicListAdpater = new MusicListDialogAdapter(MusicListDialog.this, children);
-            mRecyclerView.setAdapter(mMusicListAdpater); 
+            mRecyclerView.setAdapter(mMusicListAdpater);
             mMusicListAdpater.OnClickListener(MusicListDialog.this);
-            smoothMoveToPosition(ToolUtil.readInt("MusicPosition"));
+
+            Optional.ofNullable(mMediaController.getPlaybackState().getExtras())
+                    .map(bundle -> bundle.getInt(MusicService.MUSIC_STATE_POSITION, -1))
+                    .filter(integer -> integer >= 0)
+                    .ifPresent(integer -> smoothMoveToPosition(integer));
         }
 
         @Override
@@ -150,11 +160,12 @@ public class MusicListDialog extends AppCompatActivity implements MusicListDialo
     public void OnClick(MediaBrowserCompat.MediaItem data, int position) {
         mMediaController.getTransportControls().skipToQueueItem(position);
     }
-    
+
     //目标项是否在最后一个可见项之后
     private boolean mShouldScroll;
     //记录目标项位置
     private int mToPosition;
+
     /**
      * 滑动到指定位置
      */
@@ -185,15 +196,15 @@ public class MusicListDialog extends AppCompatActivity implements MusicListDialo
     protected void onDestroy() {
         super.onDestroy();
         Glide.get(this).clearMemory();
-        if(mMediaController != null) {
+        if (mMediaController != null) {
             mMediaController.unregisterCallback(mMediaCallback);
-            mMediaController = null;        
+            mMediaController = null;
         }
-        if(mMediaBrowser.isConnected()) {
+        if (mMediaBrowser.isConnected()) {
+            mMediaBrowser.unsubscribe(MusicService.MUSIC_ALL);
             mMediaBrowser.disconnect();
         }
     }
-
 
 
 }

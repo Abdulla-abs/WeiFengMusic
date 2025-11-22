@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Optional;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Single;
@@ -29,6 +30,7 @@ import io.reactivex.rxjava3.functions.Function;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import retrofit2.Response;
 
+@Singleton
 public class RemoteSongDataSource extends MusicDataSource {
 
     private final NestedApi nestedApi;
@@ -65,6 +67,8 @@ public class RemoteSongDataSource extends MusicDataSource {
     @Override
     public Single<TypeWrapper<UserMusicListBean.PlayList>> fetchSongListDetail(PlaylistDTO songList) {
         return nestedApi.getSongListDetail(songList.getId())
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
                 .map(new Function<UserMusicListBean, TypeWrapper<UserMusicListBean.PlayList>>() {
                     @Override
                     public TypeWrapper<UserMusicListBean.PlayList> apply(UserMusicListBean userMusicListBean) throws Throwable {

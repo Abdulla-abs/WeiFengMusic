@@ -1,5 +1,6 @@
 package com.wei.music.adapter;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,11 +20,14 @@ import com.wei.music.databinding.LayoutHomeMineBinding;
 import com.wei.music.utils.GlideLoadUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-public class MyRecycleAdapter extends ListAdapter<PlaylistDTO, RecyclerView.ViewHolder> {
+public class MyRecycleAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+
 
     private enum ViewType {
         TYPE_USER_CARD(0),
@@ -36,29 +40,24 @@ public class MyRecycleAdapter extends ListAdapter<PlaylistDTO, RecyclerView.View
     }
 
     private UserLoginBean userLoginBean;
+    private List<PlaylistDTO> playlistDTOS = Collections.emptyList();
     private OnItemClickListener mListener;
 
-    private static final DiffUtil.ItemCallback<PlaylistDTO> diffCallback = new DiffUtil.ItemCallback<>() {
-        @Override
-        public boolean areItemsTheSame(@NonNull PlaylistDTO oldItem, @NonNull PlaylistDTO newItem) {
-            // 推荐使用唯一 ID，或标题+图片的组合
-            return Objects.equals(oldItem.getId(), newItem.getId());
-        }
+    private final Context context;
 
-        @Override
-        public boolean areContentsTheSame(@NonNull PlaylistDTO oldItem, @NonNull PlaylistDTO newItem) {
-            return oldItem.getName().equals(newItem.getName());
-        }
-    };
 
-    public MyRecycleAdapter() {
-        super(diffCallback);
+    public MyRecycleAdapter(Context context) {
+        this.context = context;
+    }
+
+    public void onDataSetChange(List<PlaylistDTO> playlistDTOS) {
+        this.playlistDTOS = playlistDTOS;
+        notifyItemRangeChanged(0, playlistDTOS.size());
     }
 
     @Override
     public int getItemCount() {
-        int itemCount = super.getItemCount();
-        return itemCount + 1;
+        return playlistDTOS.size() + 1;
     }
 
     @Override
@@ -95,7 +94,7 @@ public class MyRecycleAdapter extends ListAdapter<PlaylistDTO, RecyclerView.View
                     .ifPresent(new Consumer<UserLoginBean>() {
                         @Override
                         public void accept(UserLoginBean userLoginBean) {
-                            GlideLoadUtils.setCircle(userCardViewHolder.itemView.getContext(),
+                            GlideLoadUtils.setCircle(context,
                                     userLoginBean.getProfile().getAvatarUrl(),
                                     userCardViewHolder.binding.userIcon
                             );
@@ -113,11 +112,10 @@ public class MyRecycleAdapter extends ListAdapter<PlaylistDTO, RecyclerView.View
 
         } else if (holder instanceof MyRecycleAdapter.SongListViewHolder) {
             MyRecycleAdapter.SongListViewHolder songListViewHolder = (SongListViewHolder) holder;
-            PlaylistDTO playlistDTO = getCurrentList().get(holder.getAdapterPosition() - 1);
+            PlaylistDTO playlistDTO = playlistDTOS.get(holder.getAdapterPosition() - 1);
             songListViewHolder.mTitle.setText(playlistDTO.getName());
             songListViewHolder.mNumber.setText(playlistDTO.getTrackCount() + " 首");
             GlideLoadUtils.setRound(
-                    holder.itemView.getContext(),
                     playlistDTO.getCoverImgUrl(),
                     8,
                     songListViewHolder.mImage

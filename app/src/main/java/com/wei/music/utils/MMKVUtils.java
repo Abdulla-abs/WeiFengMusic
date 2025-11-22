@@ -6,6 +6,8 @@ import com.blankj.utilcode.util.GsonUtils;
 import com.tencent.mmkv.MMKV;
 import com.wei.music.bean.SongListBean;
 import com.wei.music.bean.UserLoginBean;
+import com.wei.music.service.CurrentMusicSnapshot;
+import com.wei.music.service.MusicServiceModeHelper;
 
 import java.util.Optional;
 import java.util.Set;
@@ -349,9 +351,29 @@ public class MMKVUtils {
     }
 
 
-    public static final String PLAY_MODEL = "PLAY_MODEL";
+    private static final String MUSIC_SNAPSHOT = "MUSIC_SNAPSHOT";
 
-    public static void savePlayModel(int playModel) {
-        mmkv.putInt(PLAY_MODEL, playModel);
+    public static void putMusicSnapshot(CurrentMusicSnapshot musicSnapshot) {
+        mmkv.putString(MUSIC_SNAPSHOT, GsonUtils.toJson(musicSnapshot));
+    }
+
+    public static Optional<CurrentMusicSnapshot> getCurrentMusicSnapshot() {
+        return Optional.ofNullable(
+                GsonUtils.fromJson(
+                        mmkv.getString(MUSIC_SNAPSHOT, ""),
+                        CurrentMusicSnapshot.class
+                )
+        );
+    }
+
+    private static final String PLAY_MODE = "PLAY_MODE";
+    public static void putPlayMode(MusicServiceModeHelper.PlayMode currentMode) {
+        mmkv.putInt(PLAY_MODE,currentMode.flag);
+    }
+
+    public static MusicServiceModeHelper.PlayMode getCurrentPlayMode(){
+        return MusicServiceModeHelper.PlayMode.valueOfFlag(
+                mmkv.getInt(PLAY_MODE,MusicServiceModeHelper.PlayMode.LIST_CIRCLE.flag)
+        );
     }
 }

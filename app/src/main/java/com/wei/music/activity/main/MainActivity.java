@@ -4,10 +4,12 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.support.v4.media.MediaBrowserCompat;
+import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
@@ -20,6 +22,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.core.content.res.ResourcesCompat;
@@ -28,19 +31,24 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.request.animation.GlideAnimation;
-import com.bumptech.glide.request.target.SimpleTarget;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
+import com.wei.music.MusicSessionManager;
 import com.wei.music.R;
 import com.wei.music.activity.MusicListDialog;
-import com.wei.music.activity.PlayerActivity;
+import com.wei.music.activity.play.PlayerActivity;
 import com.wei.music.activity.SearchActivity;
 import com.wei.music.fragment.AboutFragment;
 import com.wei.music.fragment.home.HomeFragment;
 import com.wei.music.fragment.MoreFragment;
-import com.wei.music.fragment.home.HomeViewModel;
+import com.wei.music.mapper.MediaMetadataInfo;
+import com.wei.music.mapper.MediaMetadataMapper;
+import com.wei.music.service.CurrentMusicSnapshot;
 import com.wei.music.service.MusicService;
+import com.wei.music.service.MusicServiceModeHelper;
+import com.wei.music.service.musicaction.MusicActionContract;
 import com.wei.music.utils.ColorUtil;
 import com.wei.music.utils.GlideLoadUtils;
 import com.wei.music.utils.MMKVUtils;
@@ -48,19 +56,24 @@ import com.wei.music.utils.ToolUtil;
 import com.wei.music.view.MarqueeView;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import androidx.lifecycle.ViewModelProvider;
 import androidx.viewpager2.widget.ViewPager2;
 
 import java.util.ArrayList;
+import java.util.Optional;
+import java.util.function.Consumer;
 
 import com.wei.music.adapter.MainPagerAdapter;
 
-import dagger.android.support.DaggerAppCompatActivity;
-import jakarta.inject.Inject;
+import javax.inject.Inject;
 
-public class MainActivity extends DaggerAppCompatActivity implements BottomNavigationView.OnNavigationItemSelectedListener, View.OnClickListener, DrawerLayout.DrawerListener, NavigationView.OnNavigationItemSelectedListener {
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
+public class MainActivity extends AppCompatActivity implements BottomNavigationView.OnNavigationItemSelectedListener, View.OnClickListener, DrawerLayout.DrawerListener, NavigationView.OnNavigationItemSelectedListener {
 
     private final List<String> mTitles = Arrays.asList("Home", "More", "About");
     private final List<Fragment> mPagerFragments = new ArrayList<>();
@@ -76,8 +89,10 @@ public class MainActivity extends DaggerAppCompatActivity implements BottomNavig
     private MediaControllerCompat mMediaController;
     private LinearLayout mPlayBarRoot;
 
+    private MainActivityViewModel mainViewModel;
+
     @Inject
-    ViewModelProvider.Factory factory;
+    MusicSessionManager musicSessionManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,13 +100,18 @@ public class MainActivity extends DaggerAppCompatActivity implements BottomNavig
         setContentView(R.layout.activity_main);
         ToolUtil.setStatusBarColor(this, Color.TRANSPARENT, getResources().getColor(R.color.colorPrimary), true);
 
-        MainActivityViewModel mainViewModel = new ViewModelProvider(this, factory).get(MainActivityViewModel.class);
-
+        mainViewModel = new ViewModelProvider(this).get(MainActivityViewModel.class);
         mainViewModel.init();
+
         initMediaBrowser();
         initView();
-        InitData();
+        initData();
     }
+
+    private void initData() {
+
+    }
+
 
     private void initMediaBrowser() {
         mMediaBrowser = new MediaBrowserCompat(
@@ -108,13 +128,20 @@ public class MainActivity extends DaggerAppCompatActivity implements BottomNavig
         @Override
         public void onConnected() {
             MediaSessionCompat.Token token = mMediaBrowser.getSessionToken();
-            try {
-                mMediaController = new MediaControllerCompat(MainActivity.this, token);
-            } catch (RemoteException e) {
-            }
+            mMediaController = new MediaControllerCompat(MainActivity.this, token);
             mMediaController.registerCallback(mMediaCallback);
-            mMediaBrowser.unsubscribe("cs");
-            mMediaBrowser.subscribe("cs", mCallback);
+
+//            Optional<CurrentMusicSnapshot> currentMusicSnapshot = MMKVUtils.getCurrentMusicSnapshot();
+//            currentMusicSnapshot.ifPresent(new Consumer<CurrentMusicSnapshot>() {
+//                @Override
+//                public void accept(CurrentMusicSnapshot musicSnapshot) {
+//                    musicSessionManager.intent.postValue(new MusicActionContract.ChangePlayQueue(
+//                                    Collections.singletonList(musicSnapshot.restoreQueueItem()), 0
+//                            ));
+//                }
+//            });
+//            mMediaBrowser.unsubscribe("cs");
+//            mMediaBrowser.subscribe("cs", mCallback);
         }
     };
 
@@ -123,7 +150,7 @@ public class MainActivity extends DaggerAppCompatActivity implements BottomNavig
         @Override
         public void onMetadataChanged(MediaMetadataCompat metadata) {
             super.onMetadataChanged(metadata);
-            InitData();
+            onMetadataChange(metadata);
         }
 
         @Override
@@ -207,26 +234,34 @@ public class MainActivity extends DaggerAppCompatActivity implements BottomNavig
         mPlayBarView.setOnClickListener(this);
     }
 
-    private void InitData() {
+    private void onMetadataChange(MediaMetadataCompat metadata) {
+        MediaMetadataInfo info = MediaMetadataMapper.mapper(metadata);
 
-        if (MMKVUtils.getBoolean("MusicId")) {
-            GlideLoadUtils.setCircle(this, MMKVUtils.getString("MusicIcon"), mPlayBarIcon);
-            mPlayBarTitle.setText(MMKVUtils.getString("MusicName") + "-" + MMKVUtils.getString("MusicSinger"));
-            Glide.with(getApplicationContext())
-                    .load(MMKVUtils.getString("MusicIcon"))
-                    .asBitmap()
-                    .into(new SimpleTarget<Bitmap>() {
-                        @Override
-                        public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
-                            int[] colors = ColorUtil.getColor(resource);
-                            GradientDrawable mGroupDrawable = (GradientDrawable) mPlayBarRoot.getBackground();
-                            mGroupDrawable.setColor(colors[1]);
-                            mPlayBarTitle.setTextColor(colors[0]);
-                            mPlayBarPause.setColorFilter(colors[0]);
-                            mPlayBarList.setColorFilter(colors[0]);
-                        }
-                    });
-        }
+        GlideLoadUtils.setCircle(this, info.getAlbum(), mPlayBarIcon);
+        mPlayBarTitle.setText(info.getTitle() + "-" + info.getArtist());
+        Glide.with(this)
+                .asBitmap()
+                .load(info.getAlbum())
+                .into(new CustomTarget<Bitmap>() {  // ← 改成 CustomTarget！！！
+
+                    @Override
+                    public void onResourceReady(@NonNull Bitmap resource,
+                                                @Nullable Transition<? super Bitmap> transition) {
+                        // 这里就是原来的 onResourceReady 内容
+                        int[] colors = ColorUtil.getColor(resource);
+                        GradientDrawable mGroupDrawable = (GradientDrawable) mPlayBarRoot.getBackground();
+                        mGroupDrawable.setColor(colors[1]);
+                        mPlayBarTitle.setTextColor(colors[0]);
+                        mPlayBarPause.setColorFilter(colors[0]);
+                        mPlayBarList.setColorFilter(colors[0]);
+                    }
+
+                    @Override
+                    public void onLoadCleared(@Nullable Drawable placeholder) {
+                        // 可选：资源被清除时调用（比如 detach 时）
+                    }
+                });
+
     }
 
     @Override

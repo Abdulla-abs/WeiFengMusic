@@ -14,7 +14,7 @@ import androidx.core.app.NotificationCompat;
 import androidx.media.session.MediaButtonReceiver;
 
 import com.wei.music.R;
-import com.wei.music.activity.PlayerActivity;
+import com.wei.music.activity.play.PlayerActivity;
 
 public class MediaStyleHelper {
 

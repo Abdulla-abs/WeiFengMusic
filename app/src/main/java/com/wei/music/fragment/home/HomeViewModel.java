@@ -1,10 +1,10 @@
 package com.wei.music.fragment.home;
 
-import android.content.Context;
 import android.text.TextUtils;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.ViewModel;
 
 import com.wei.music.AppSessionManager;
 import com.wei.music.MusicSessionManager;
@@ -12,15 +12,21 @@ import com.wei.music.bean.PlaylistDTO;
 import com.wei.music.bean.UserLoginBean;
 import com.wei.music.repository.UserRepository;
 import com.wei.music.utils.Resource;
-import com.wei.music.utils.ViewModelScopeProviderUtil;
 
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import autodispose2.AutoDispose;
+import javax.inject.Inject;
+
+import dagger.hilt.android.lifecycle.HiltViewModel;
+import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.functions.Consumer;
-import jakarta.inject.Inject;
+import io.reactivex.rxjava3.functions.Function;
 
-public class HomeViewModel extends ViewModelScopeProviderUtil.ScopedViewModel {
+@HiltViewModel
+public class HomeViewModel extends ViewModel {
     private static final String TAG = "HomeViewModel";
     private final MutableLiveData<Resource<Boolean>> _captchaLiveData = new MutableLiveData<>();
     public LiveData<Resource<Boolean>> captchaLiveData = _captchaLiveData;
@@ -50,8 +56,7 @@ public class HomeViewModel extends ViewModelScopeProviderUtil.ScopedViewModel {
             return;
         }
 
-        userRepository.requestCaptcha(phone)
-                .to(AutoDispose.autoDisposable(getScopeProvider()))
+        Disposable subscribe = userRepository.requestCaptcha(phone)
                 .subscribe(new Consumer<Resource<Void>>() {
                     @Override
                     public void accept(Resource<Void> voidResource) throws Throwable {
@@ -67,7 +72,6 @@ public class HomeViewModel extends ViewModelScopeProviderUtil.ScopedViewModel {
 
     public void observableSongListStore() {
         musicSessionManager.loadDatabaseSongList()
-                .to(AutoDispose.autoDisposable(getScopeProvider()))
                 .subscribe();
     }
 
@@ -85,7 +89,7 @@ public class HomeViewModel extends ViewModelScopeProviderUtil.ScopedViewModel {
             //已经登录的，刷新远程列表
             UserLoginBean valueData = value.getData();
             musicSessionManager.refreshSongListWithUser(valueData.getProfile().getUserId());
-        }else {
+        } else {
             //重新查一遍本地音乐
             musicSessionManager.loadLocalSongList().subscribe();
         }

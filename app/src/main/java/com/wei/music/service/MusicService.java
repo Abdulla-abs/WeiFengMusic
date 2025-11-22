@@ -6,6 +6,7 @@ import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
@@ -23,13 +24,15 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.lifecycle.Observer;
 import androidx.media.MediaBrowserServiceCompat;
 
+import com.blankj.utilcode.util.LogUtils;
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.request.animation.GlideAnimation;
-import com.bumptech.glide.request.target.SimpleTarget;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.wei.music.MusicSessionManager;
 import com.wei.music.R;
 import com.wei.music.repository.MusicListRepository;
@@ -41,9 +44,11 @@ import com.wei.music.utils.ToolUtil;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
+import java.util.Optional;
+import java.util.function.Consumer;
 
-import dagger.android.AndroidInjection;
+import abbas.fun.myutil.If;
+import dagger.hilt.android.AndroidEntryPoint;
 import io.reactivex.rxjava3.annotations.NonNull;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.ObservableEmitter;
@@ -52,47 +57,32 @@ import io.reactivex.rxjava3.core.ObservableSource;
 import io.reactivex.rxjava3.disposables.Disposable;
 import jakarta.inject.Inject;
 
+@AndroidEntryPoint
 public class MusicService extends MediaBrowserServiceCompat implements ServiceCallback {
     private static final String NoticeName = "WeiFengMusic";
     private static final int NoticeId = 2969;
-
     public static final String ACTION_INIT_CURRENT_SONG = "INIT_CURRENT_SONG";
     public static final String ACTION_CHANGE_SONG_LIST = "INIT_CURRENT_SONG";
-
     public static final String ACTION_LIKE_MUSIC = "LIKE_MUSIC";
+    public static final String ACTION_PLAY_MODE_FLAG = "PLAY_MODE_FLAG";
     public static final String ACTION_PLAY_MODE = "PLAY_MODE";
+
     public static final String ACTION_MUSIC_ID = "ACTION_MUSIC_ID";
-
-
-    private int mPlayModel = SEQUENCE;
-    private static final int SINGLE = 0;//单曲循环
-    private static final int RANDOM = 1;//随机播放
-    private static final int SEQUENCE = 2;//顺序播放
-
+    public static final String ACTION_SONG_LIST = "SONG_LIST_DATA";
     public static final String MSCQIMusicType = "MediaSessionCompatMusicType";
 
-    private final Random mRandom = new Random();
-
-    private int mPosition = 0;//歌曲位置
+    private int currentIndex = 0;//歌曲位置
     private int mDuration = 0;//歌曲长度
-    private int mAudioSessionId = 0;//可视化ID
+//    private int mAudioSessionId = 0;//可视化ID
     private Thread mSeekBarThread;//进度条更新线程
-
-    public void onChangePlayModel(int playModel) {
-        mPlayModel = playModel;
-        MMKVUtils.savePlayModel(playModel);
-        Bundle bundle = new Bundle();
-        bundle.putInt("model", mPlayModel);
-        mMediaSession.setExtras(bundle);
-    }
 
     private class SeekBarThread implements Runnable {
         @Override
         public void run() {
             while (!Thread.currentThread().isInterrupted()) {
-                if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
-                    mPlaybackState.setState(PlaybackStateCompat.STATE_PLAYING, mMediaPlayer.getCurrentPosition(), 1);
-                    mMediaSession.setPlaybackState(mPlaybackState.build());
+                if (player != null && player.isPlaying()) {
+                    mPlaybackState.setState(PlaybackStateCompat.STATE_PLAYING, player.getCurrentPosition(), 1);
+                    mediaSession.setPlaybackState(mPlaybackState.build());
                     try {
                         Thread.sleep(500);
                     } catch (Exception e) {
@@ -109,23 +99,19 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
     private AudioFocusRequest mAudioFocusRequest;
 
     //媒体会话，受控端
-    private static MediaSessionCompat mMediaSession;
+    private static MediaSessionCompat mediaSession;
     //播放器
-    private MediaPlayer mMediaPlayer;
+    private MediaPlayer player;
     //播放状态
     private PlaybackStateCompat.Builder mPlaybackState;
     private NotificationManager mNotificationManager;
     private NotificationCompat.Builder mNotification;
-    private MediaMetadataCompat mMediaMetadata;
 
     private PendingIntent playAction;
     private PendingIntent prevAction;
     private PendingIntent nextAction;
     private MediaServiceReceiver mMediaServiceRec;
 
-    //    private List<MediaSessionCompat.QueueItem> mLastMusicList = new ArrayList<>();
-//
-//    private List<MediaSessionCompat.QueueItem> mMusicList = new ArrayList<>();
     private final List<MediaBrowserCompat.MediaItem> mediaItems = new ArrayList<>();
     private final List<MediaBrowserCompat.MediaItem> mLikeList = new ArrayList<>();
 
@@ -137,7 +123,6 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
     @Override
     public void onCreate() {
         super.onCreate();
-        AndroidInjection.inject(this);
 
         initMediaPlayer();
         initMediaSession();
@@ -151,15 +136,17 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
 
                 if (musicActionContract instanceof MusicActionContract.ChangePlayQueue) {
                     MusicActionContract.ChangePlayQueue changePlayQueue = (MusicActionContract.ChangePlayQueue) musicActionContract;
-                    queues = changePlayQueue.getReplace();
-                    mPosition = changePlayQueue.getStartIndex();
-                    mMediaSession.setQueue(queues);
+                    originQueues = changePlayQueue.getReplace();
+                    currentIndex = changePlayQueue.getStartIndex();
+                    currentQueue = originQueues;
+                    mediaSession.setQueue(currentQueue);
                     startPlay();
                 } else if (musicActionContract instanceof MusicActionContract.OnPlayListClick) {
                     MusicActionContract.OnPlayListClick playListClick = (MusicActionContract.OnPlayListClick) musicActionContract;
-                    queues = playListClick.getReplace();
-                    mPosition = playListClick.getStartIndex();
-                    mMediaSession.setQueue(queues);
+                    originQueues = playListClick.getReplace();
+                    currentIndex = playListClick.getStartIndex();
+                    currentQueue = originQueues;
+                    mediaSession.setQueue(currentQueue);
                     startPlay();
                 }
 
@@ -168,17 +155,23 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         });
     }
 
-    private List<MediaSessionCompat.QueueItem> queues = Collections.emptyList();
+    private List<MediaSessionCompat.QueueItem> originQueues = new ArrayList<>();
+    private List<MediaSessionCompat.QueueItem> currentQueue = new ArrayList<>();
+
+    private RepeatMode repeatMode = RepeatMode.OFF;
+    private ShuffleMode shuffleMode = ShuffleMode.OFF;
+
+    public static int FIXED_AUDIO_SESSION_ID = -1;
 
     private void initMediaSession() {
-        mMediaSession = new MediaSessionCompat(this, NoticeName);
+        mediaSession = new MediaSessionCompat(this, NoticeName);
         mPlaybackState = new PlaybackStateCompat.Builder().setActions(PlaybackStateCompat.ACTION_PLAY | PlaybackStateCompat.ACTION_PAUSE | PlaybackStateCompat.ACTION_SKIP_TO_NEXT | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS | PlaybackStateCompat.ACTION_SEEK_TO);
-        mMediaSession.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS | MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
-        mMediaSession.setMediaButtonReceiver(null);
-        mMediaSession.setPlaybackState(mPlaybackState.build());
-        mMediaSession.setCallback(mCallback);
-        setSessionToken(mMediaSession.getSessionToken());
-        mMediaSession.setActive(true);
+        mediaSession.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS | MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
+        mediaSession.setMediaButtonReceiver(null);
+        mediaSession.setPlaybackState(mPlaybackState.build());
+        mediaSession.setCallback(mCallback);
+        setSessionToken(mediaSession.getSessionToken());
+        mediaSession.setActive(true);
 
         int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
         Intent intentNext = new Intent("nextMusic");
@@ -190,6 +183,7 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         Intent intentPrev = new Intent("prevMusic");
         prevAction = PendingIntent.getBroadcast(getApplicationContext(), 1, intentPrev, flags);
 
+        MusicServiceModeHelper.initMode(mediaSession.getController().getTransportControls());
     }
 
     private void initMediaPlayer() {
@@ -206,16 +200,17 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
             registerReceiver(mMediaServiceRec, intentFilter);
         }
 
-        mMediaPlayer = new MediaPlayer();
-        mMediaPlayer.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
+        player = new MediaPlayer();
+        player.setAudioSessionId(FIXED_AUDIO_SESSION_ID);
+        player.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
         mWifiLock = ((WifiManager) getSystemService(WIFI_SERVICE)).createWifiLock(WifiManager.WIFI_MODE_FULL, "musicWifiLock");
         mWifiLock.acquire();
         mAudioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
-        mAudioSessionId = mMediaPlayer.getAudioSessionId();
-        ToolUtil.write("AudioId", mAudioSessionId);
+        FIXED_AUDIO_SESSION_ID = player.getAudioSessionId();
         mSeekBarThread = new Thread(new SeekBarThread());
 
-        mPlayModel = ToolUtil.readInt("PlayModel");
+
+        //   mPlayModel = ToolUtil.readInt("PlayModel");
     }
 
     private boolean requestFocus() {
@@ -235,19 +230,20 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
     public void startPlay() {
         try {
 
-            if (mMediaPlayer == null) {
+            if (player == null) {
                 initMediaPlayer();
             }
 
-            mMediaPlayer.reset();
+            player.reset();
 
-            Bundle extras = queues.get(mPosition).getDescription().getExtras();
+            Bundle extras = originQueues.get(currentIndex).getDescription().getExtras();
             if (extras == null) {
                 return;
             }
-            int musicType = extras.getInt(MSCQIMusicType, 0);
+            int musicType = extras.getInt(MSCQIMusicType, -1);
+            snapshot.setMusicType(musicType);
 
-            String mediaId = queues.get(mPosition).getDescription().getMediaId();
+            String mediaId = originQueues.get(currentIndex).getDescription().getMediaId();
             Disposable subscribe = musicListRepository.fetchSongUrl(musicType, mediaId)
                     .flatMapObservable(new io.reactivex.rxjava3.functions.Function<Resource<Uri>, ObservableSource<Integer>>() {
                         @Override
@@ -256,19 +252,21 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
                                 @Override
                                 public void subscribe(@NonNull ObservableEmitter<Integer> emitter) throws Throwable {
                                     if (uriResource.isSuccess()) {
-                                        mMediaPlayer.setDataSource(MusicService.this, uriResource.getData());
-                                        mMediaPlayer.prepareAsync();
-                                        mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+                                        snapshot.setUrl(uriResource.getData().toString());
+                                        player.setDataSource(MusicService.this, uriResource.getData());
+                                        player.prepareAsync();
+                                        player.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                                             @Override
                                             public void onPrepared(MediaPlayer mp) {
                                                 mDuration = mp.getDuration();
+                                                snapshot.setDuration(mDuration);
                                                 emitter.onNext(1);
                                             }
                                         });
-                                        mMediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                                        player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                                             @Override
                                             public void onCompletion(MediaPlayer mp) {
-                                                mMediaSession.getController().getTransportControls().skipToNext();
+                                                mediaSession.getController().getTransportControls().skipToNext();
                                                 updateNotification();
                                             }
                                         });
@@ -282,7 +280,8 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
                         @Override
                         public void accept(Integer integer) throws Throwable {
                             if (integer == 1) {
-                                mMediaSession.getController().getTransportControls().play();
+                                mediaSession.getController().getTransportControls().play();
+                                //storeMusicState();
 //                                if (Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
 //                                    mMediaPlayer.seekTo(ToolUtil.readInt("MusicProgress"), MediaPlayer.SEEK_CLOSEST);
 //                                else mMediaPlayer.seekTo((int) ToolUtil.readInt("MusicProgress"));
@@ -300,6 +299,33 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         }
     }
 
+    private final CurrentMusicSnapshot snapshot = CurrentMusicSnapshot.getInstance();
+
+    private void storeMusicState() {
+        try {
+            MediaSessionCompat.QueueItem queueItem = originQueues.get(currentIndex);
+            MediaDescriptionCompat description = queueItem.getDescription();
+            String defStr = "<unknow>";
+            String name = Optional.ofNullable(description.getTitle())
+                    .map(CharSequence::toString).orElse(defStr);
+            String singer = Optional.ofNullable(description.getSubtitle())
+                    .map(CharSequence::toString)
+                    .orElse(defStr);
+            String icon = Optional.ofNullable(description.getDescription())
+                    .map(CharSequence::toString)
+                    .orElse(defStr);
+            String id = Optional.ofNullable(description.getMediaId())
+                    .orElse(defStr);
+            snapshot.setMusicName(name)
+                    .setArtist(singer)
+                    .setAlbum(icon)
+                    .setMusicId(Long.parseLong(id));
+            MMKVUtils.putMusicSnapshot(snapshot);
+        } catch (Exception e) {
+            LogUtils.e(e);
+        }
+    }
+
     private final AudioManager.OnAudioFocusChangeListener mOnAudioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
         @Override
         public void onAudioFocusChange(int focusChange) {
@@ -307,10 +333,10 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
                 case AudioManager.AUDIOFOCUS_LOSS:
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
-                    mMediaSession.getController().getTransportControls().pause();
+                    mediaSession.getController().getTransportControls().pause();
                     break;
                 case AudioManager.AUDIOFOCUS_GAIN:
-                    mMediaSession.getController().getTransportControls().play();
+                    mediaSession.getController().getTransportControls().play();
                     break;
             }
         }
@@ -319,20 +345,84 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
     private final MediaSessionCompat.Callback mCallback = new MediaSessionCompat.Callback() {
 
         @Override
+        public void onSetRepeatMode(int repeatMode) {
+            super.onSetRepeatMode(repeatMode);
+            switch (repeatMode) {
+                case PlaybackStateCompat.REPEAT_MODE_NONE:
+                    MusicService.this.repeatMode = RepeatMode.OFF;
+                    break;
+                case PlaybackStateCompat.REPEAT_MODE_ONE:
+                    MusicService.this.repeatMode = RepeatMode.ONE;
+                    break;
+                case PlaybackStateCompat.REPEAT_MODE_ALL:
+                case PlaybackStateCompat.REPEAT_MODE_GROUP:
+                    MusicService.this.repeatMode = RepeatMode.ALL;
+                    break;
+                default:
+                    MusicService.this.repeatMode = RepeatMode.OFF;
+                    break;
+            }
+
+            mediaSession.setRepeatMode(repeatMode);
+        }
+
+        @Override
+        public void onSetShuffleMode(int shuffleMode) {
+            super.onSetShuffleMode(shuffleMode);
+
+            boolean newModeEnabled = (shuffleMode == PlaybackStateCompat.SHUFFLE_MODE_ALL);
+
+            if (newModeEnabled && MusicService.this.shuffleMode == ShuffleMode.OFF) {
+                // 开启随机：打乱队列，但保持当前歌曲不变
+                MediaSessionCompat.QueueItem currentItem = (currentIndex >= 0 && currentIndex < currentQueue.size())
+                        ? currentQueue.get(currentIndex) : null;
+
+                currentQueue.clear();
+                currentQueue.addAll(originQueues);
+                Collections.shuffle(currentQueue);
+
+                if (currentItem != null) {
+                    currentIndex = currentQueue.indexOf(currentItem);
+                    if (currentIndex == -1) currentIndex = 0;
+                }
+            } else if (!newModeEnabled && MusicService.this.shuffleMode == ShuffleMode.ON) {
+                // 关闭随机：恢复原始顺序，保持当前歌曲位置
+                MediaSessionCompat.QueueItem currentItem = (currentIndex >= 0 && currentIndex < currentQueue.size())
+                        ? currentQueue.get(currentIndex) : null;
+
+                currentQueue.clear();
+                currentQueue.addAll(originQueues);
+
+                if (currentItem != null) {
+                    currentIndex = currentQueue.indexOf(currentItem);
+                    if (currentIndex == -1) currentIndex = 0;
+                }
+            }
+
+            MusicService.this.shuffleMode = newModeEnabled ? ShuffleMode.ON : ShuffleMode.OFF;
+
+            mediaSession.setShuffleMode(shuffleMode);
+            // 通知所有客户端（通知栏、锁屏、Widget、手表）队列变了
+            mediaSession.setQueue(currentQueue);
+
+            updatePlaybackState();
+        }
+
+        @Override
         public void onPlay() {
             super.onPlay();
-            if (mMediaPlayer != null && queues != null) {
-                if (mMediaPlayer.isPlaying()) {
-                    mMediaPlayer.pause();
-                    mPlaybackState.setState(PlaybackStateCompat.STATE_PAUSED, mMediaPlayer.getCurrentPosition(), 1);
-                    mMediaSession.setPlaybackState(mPlaybackState.build());
+            if (player != null && originQueues != null) {
+                if (player.isPlaying()) {
+                    player.pause();
+                    mPlaybackState.setState(PlaybackStateCompat.STATE_PAUSED, player.getCurrentPosition(), 1);
+                    mediaSession.setPlaybackState(mPlaybackState.build());
                 } else {
                     if (requestFocus()) {
-                        mMediaPlayer.start();
+                        player.start();
                         if (!mSeekBarThread.isAlive()) {
                             mSeekBarThread.start();
-                            mPlaybackState.setState(PlaybackStateCompat.STATE_PLAYING, mMediaPlayer.getCurrentPosition(), 1);
-                            mMediaSession.setPlaybackState(mPlaybackState.build());
+                            mPlaybackState.setState(PlaybackStateCompat.STATE_PLAYING, player.getCurrentPosition(), 1);
+                            mediaSession.setPlaybackState(mPlaybackState.build());
                         }
                     }
                 }
@@ -345,11 +435,11 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         @Override
         public void onPause() {
             super.onPause();
-            if (mMediaPlayer != null && queues != null) {
-                if (mMediaPlayer.isPlaying()) {
-                    mMediaPlayer.pause();
-                    mPlaybackState.setState(PlaybackStateCompat.STATE_PAUSED, mMediaPlayer.getCurrentPosition(), 1);
-                    mMediaSession.setPlaybackState(mPlaybackState.build());
+            if (player != null && originQueues != null) {
+                if (player.isPlaying()) {
+                    player.pause();
+                    mPlaybackState.setState(PlaybackStateCompat.STATE_PAUSED, player.getCurrentPosition(), 1);
+                    mediaSession.setPlaybackState(mPlaybackState.build());
                 }
                 updateNotification();
             }
@@ -359,56 +449,69 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         public void onSeekTo(long pos) {
             super.onSeekTo(pos);
             if (Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
-                mMediaPlayer.seekTo(pos, MediaPlayer.SEEK_CLOSEST);
-            else mMediaPlayer.seekTo((int) pos);
+                player.seekTo(pos, MediaPlayer.SEEK_CLOSEST);
+            else player.seekTo((int) pos);
             mPlaybackState.setState(PlaybackStateCompat.STATE_PLAYING, pos, 1);
-            mMediaSession.setPlaybackState(mPlaybackState.build());
+            mediaSession.setPlaybackState(mPlaybackState.build());
         }
 
         @Override
         public void onSkipToNext() {
             super.onSkipToNext();
-            if (mMediaPlayer != null && queues != null) {
-                if (mPlayModel == SEQUENCE) {
-                    if (mPosition == queues.size() - 1) {
-                        mPosition = 0;
-                    } else {
-                        mPosition++;
-                    }
-                } else if (mPlayModel == RANDOM) {
-                    mPosition = mRandom.nextInt(queues.size());
-                }
-                mPlaybackState.setState(PlaybackStateCompat.STATE_SKIPPING_TO_NEXT, 0, 1);
-                mMediaSession.setPlaybackState(mPlaybackState.build());
-
-                startPlay();
+            if (repeatMode == RepeatMode.ONE) {
+                // 单曲循环：不切歌，只从头开始
+                mediaSession.getController().getTransportControls().seekTo(0);
+                return;
             }
+
+            if (currentQueue.isEmpty()) return;
+
+            if (repeatMode == RepeatMode.ALL) {
+                // 列表循环
+                currentIndex = (currentIndex + 1) % currentQueue.size();
+            } else {
+                // 顺序播放（OFF）
+                if (currentIndex < currentQueue.size() - 1) {
+                    currentIndex++;
+                } else {
+                    // 已经最后一首，停在末尾（标准行为）
+                    updatePlaybackState(player.getDuration());
+                    return;
+                }
+            }
+
+            mPlaybackState.setState(PlaybackStateCompat.STATE_SKIPPING_TO_NEXT, 0, 1);
+            mediaSession.setPlaybackState(mPlaybackState.build());
+            startPlay();
         }
 
         @Override
         public void onSkipToPrevious() {
             super.onSkipToPrevious();
-            if (mMediaPlayer != null && queues != null) {
-                if (mPlayModel == SEQUENCE) {
-                    if (mPosition == 0) {
-                        mPosition = queues.size() - 1;
-                    } else {
-                        mPosition--;
-                    }
-                } else if (mPlayModel == RANDOM) {
-                    mPosition = mRandom.nextInt(queues.size());
-                }
-                mPlaybackState.setState(PlaybackStateCompat.STATE_SKIPPING_TO_PREVIOUS, 0, 1);
-                mMediaSession.setPlaybackState(mPlaybackState.build());
+//            if (player.getCurrentPosition() > 3000) {
+//                // 超过 3 秒：回到当前歌曲开头
+//                player.seekTo(0);
+//            } else {
+            // 否则跳上一首（列表循环时到最后一首）
+            if (currentQueue.isEmpty()) return;
 
-                startPlay();
+            if (currentIndex > 0) {
+                currentIndex--;
+            } else {
+                currentIndex = currentQueue.size() - 1; // 循环到最后一首
             }
+
+            mPlaybackState.setState(PlaybackStateCompat.STATE_SKIPPING_TO_PREVIOUS, 0, 1);
+            mediaSession.setPlaybackState(mPlaybackState.build());
+
+            startPlay();
+//            }
         }
 
         @Override
         public void onSkipToQueueItem(long id) {
             super.onSkipToQueueItem(id);
-            mPosition = (int) id;
+            currentIndex = (int) id;
 
             startPlay();
         }
@@ -416,71 +519,108 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         @Override
         public void onCustomAction(String action, Bundle extras) {
             super.onCustomAction(action, extras);
+            If.of(action)
+                    .is(ACTION_PLAY_MODE_FLAG, new Consumer<String>() {
+                        @Override
+                        public void accept(String unused) {
 
+                        }
+                    })
+                    .end();
         }
     };
 
-    public static final String ACTION_SONG_LIST = "SONG_LIST_DATA";
-    public static final String ACTION_LIKE_SONG = "LIKE_SONG";
-
-    private void getLikeList() {
-//        mOkHttpUtil.get(App.getContext(), CloudMusicApi.USER_LISK_LIST + ToolUtil.readString("UserId") + "&timestamp=" + System.currentTimeMillis(), ToolUtil.readString("UserCookie"), mOkHttpUtil.SECOND / 60, new Callback() {
-//            @Override
-//            public void onFailure(Call p1, IOException p2) {
-//            }
-//
-//            @Override
-//            public void onResponse(Call p1, final Response response) throws IOException {
-//                UserLikeListBean bean = new UserLikeListBean();
-//                bean = mGson.fromJson(response.body().string(), UserLikeListBean.class);
-//                if (mLikeList != null)
-//                    mLikeList.clear();
-//                for (int i = 0; i < bean.ids.size(); i++) {
-//                    MediaMetadataCompat mMediaMetadata = new MediaMetadataCompat.Builder()
-//                            .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, bean.ids.get(i))
-//                            .build();
-//                    mLikeList.add(new MediaBrowserCompat.MediaItem(mMediaMetadata.getDescription(), MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
-//                }
-//            }
-//        });
+    private void cycleRepeatMode() {
+        switch (repeatMode) {
+            case OFF:
+                repeatMode = RepeatMode.ALL;
+                break;
+            case ALL:
+                repeatMode = RepeatMode.ONE;
+                break;
+            case ONE:
+                repeatMode = RepeatMode.OFF;
+                break;
+        }
     }
 
-    private void setMusicMetadata() {
-        String name = queues.get(mPosition).getDescription().getTitle().toString();
-        String singer = queues.get(mPosition).getDescription().getSubtitle().toString();
-        String icon = queues.get(mPosition).getDescription().getDescription().toString();
-        String id = queues.get(mPosition).getDescription().getMediaId();
-        ToolUtil.write("MusicName", name);
-        ToolUtil.write("MusicSinger", singer);
-        ToolUtil.write("MusicIcon", icon);
-        ToolUtil.write("MusicId", id);
-        ToolUtil.write("MusicDuration", mDuration);
-        mMediaMetadata = new MediaMetadataCompat.Builder().putString(MediaMetadataCompat.METADATA_KEY_TITLE, name)//歌名
-                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, singer)//作者
-                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, icon)//歌曲封面
-                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, id)//歌曲id
-                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, mDuration)//歌曲时长
-                .build();
-        mMediaSession.setMetadata(mMediaMetadata);
+    private void toggleShuffleMode() {
+        shuffleMode = (shuffleMode == ShuffleMode.OFF) ? ShuffleMode.ON : ShuffleMode.OFF;
+        // 这里加你的随机逻辑（打乱队列等）
+    }
+
+    private void updatePlaybackState() {
+        long position = player != null ? player.getCurrentPosition() : 0L;
+        updatePlaybackState(position);
+    }
+
+    private void updatePlaybackState(long position) {
+        PlaybackStateCompat.Builder builder = new PlaybackStateCompat.Builder()
+                .setActions(PlaybackStateCompat.ACTION_PLAY |
+                        PlaybackStateCompat.ACTION_PAUSE |
+                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
+                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
+                .setState(player.isPlaying() ? PlaybackStateCompat.STATE_PLAYING
+                                : PlaybackStateCompat.STATE_PAUSED,
+                        position, 1.0f);
+
+        if (currentIndex >= 0 && currentIndex < currentQueue.size()) {
+            builder.setActiveQueueItemId(currentQueue.get(currentIndex).getQueueId());
+        }
+
+        mediaSession.setPlaybackState(builder.build());
+        //mediaSession.setQueue(currentQueue);
+    }
+
+    private Optional<MediaMetadataCompat> resetMusicMetadata() {
+        try {
+            MediaDescriptionCompat description = originQueues.get(currentIndex).getDescription();
+            MediaMetadataCompat mediaMetadataCompat = createMediaMetadataCompat(description);
+            mediaSession.setMetadata(mediaMetadataCompat);
+            return Optional.of(mediaMetadataCompat);
+        } catch (IndexOutOfBoundsException e) {
+            LogUtils.e(e);
+        }
+        return Optional.empty();
     }
 
     private void updateNotification() {
-        setMusicMetadata();
-        Glide.with(getApplicationContext()).load(mMediaMetadata.getString(MediaMetadata.METADATA_KEY_ALBUM)).asBitmap().into(new SimpleTarget<Bitmap>() {
-            @Override
-            public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
-                mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-                if (Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    NotificationChannel notificationChannel = new NotificationChannel(NoticeName, NoticeName, NotificationManager.IMPORTANCE_LOW);
-                    mNotificationManager.createNotificationChannel(notificationChannel);
-                }
-                mNotification = MediaStyleHelper.from(getApplicationContext(), mMediaSession, NoticeName)
-                        .setLargeIcon(resource).addAction(R.drawable.ic_previous, "prev", prevAction)
-                        .addAction((mMediaPlayer.isPlaying() ? R.drawable.ic_play : R.drawable.ic_pause), "play", playAction)
-                        .addAction(R.drawable.ic_next, "next", nextAction);
-                mNotificationManager.notify(NoticeId, mNotification.build());
-            }
-        });
+        Optional<MediaMetadataCompat> mediaMetadataCompatOpt = resetMusicMetadata();
+        if (mediaMetadataCompatOpt.isEmpty()) {
+            return;
+        }
+        MediaMetadataCompat mediaMetadataCompat = mediaMetadataCompatOpt.get();
+        Glide.with(getApplicationContext())
+                .asBitmap()
+                .load(mediaMetadataCompat.getString(MediaMetadata.METADATA_KEY_ALBUM))
+                .into(new CustomTarget<Bitmap>() {  // ← 改成 CustomTarget
+
+                    @Override
+                    public void onResourceReady(@androidx.annotation.NonNull Bitmap resource,
+                                                @Nullable Transition<? super Bitmap> transition) {
+                        // 原来的 onResourceReady 内容完全不动
+                        mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            NotificationChannel notificationChannel = new NotificationChannel(
+                                    NoticeName, NoticeName, NotificationManager.IMPORTANCE_LOW);
+                            mNotificationManager.createNotificationChannel(notificationChannel);
+                        }
+
+                        mNotification = MediaStyleHelper.from(getApplicationContext(), mediaSession, NoticeName)
+                                .setLargeIcon(resource)  // ← 这里直接用拿到的 Bitmap
+                                .addAction(R.drawable.ic_previous, "prev", prevAction)
+                                .addAction(player.isPlaying() ? R.drawable.ic_play : R.drawable.ic_pause, "play", playAction)
+                                .addAction(R.drawable.ic_next, "next", nextAction);
+
+                        mNotificationManager.notify(NoticeId, mNotification.build());
+                    }
+
+                    @Override
+                    public void onLoadCleared(@Nullable Drawable placeholder) {
+                        // 可选：加载被清除时（比如 Service 被销毁）执行清理
+                        // 如果你担心内存泄漏，这里可以把 resource = null
+                    }
+                });
     }
 
     @Override
@@ -488,29 +628,60 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         return new BrowserRoot(NoticeName, null);
     }
 
+    public static final String MUSIC_ALL = "WF_MUSIC_ALL";
+    public static final String MUSIC_FAVORITE = "WF_MUSIC_FAVORITE";
+    public static final String MUSIC_STATE_POSITION = "MUSIC_STATE_POSITION";
+
     @Override
     public void onLoadChildren(@androidx.annotation.NonNull String parentId, MediaBrowserServiceCompat.Result<List<MediaBrowserCompat.MediaItem>> result) {
         result.detach();
         mediaItems.clear();
-        if (parentId.equals("MusicList") && queues != null) {
-            for (int i = 0; i < queues.size(); i++) {
-                MediaDescriptionCompat description = queues.get(i).getDescription();
-                if (description == null){
+        if (parentId.equals(MUSIC_ALL) && originQueues != null) {
+            for (int i = 0; i < originQueues.size(); i++) {
+                MediaDescriptionCompat description = originQueues.get(i).getDescription();
+                if (description == null) {
                     continue;
                 }
-                MediaMetadataCompat mMediaMetadata = new MediaMetadataCompat.Builder()
-                        .putString(MediaMetadataCompat.METADATA_KEY_TITLE, description.getTitle().toString())
-                        .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, description.getSubtitle().toString())
-                        .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, description.getDescription().toString())
-                        .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, description.getMediaId())
-                        .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, 100)
+                MediaMetadataCompat mediaMetadataCompat = createMediaMetadataCompat(description);
+                mediaItems.add(
+                        new MediaBrowserCompat.MediaItem(
+                                mediaMetadataCompat.getDescription(),
+                                MediaBrowserCompat.MediaItem.FLAG_PLAYABLE)
+                );
+                Bundle bundle = new Bundle();
+                bundle.putInt(MUSIC_STATE_POSITION, currentIndex);
+                PlaybackStateCompat stateCompat = new PlaybackStateCompat.Builder()
+                        .setExtras(bundle)
                         .build();
-                mediaItems.add(new MediaBrowserCompat.MediaItem(mMediaMetadata.getDescription(), MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+                mediaSession.setPlaybackState(stateCompat);
             }
             result.sendResult(mediaItems);
-        } else if (parentId.equals("LikeList")) {
+        } else if (parentId.equals(MUSIC_FAVORITE)) {
             result.sendResult(mLikeList);
         }
+    }
+
+    private MediaMetadataCompat createMediaMetadataCompat(MediaDescriptionCompat mediaDescriptionCompat) {
+        MediaMetadataCompat.Builder mediaMetadataCompatBuilder = new MediaMetadataCompat.Builder();
+        if (mediaDescriptionCompat == null) return mediaMetadataCompatBuilder.build();
+        String defStr = "<unknow>";
+        String name = Optional.ofNullable(mediaDescriptionCompat.getTitle())
+                .map(CharSequence::toString).orElse(defStr);
+        String singer = Optional.ofNullable(mediaDescriptionCompat.getSubtitle())
+                .map(CharSequence::toString)
+                .orElse(defStr);
+        String icon = Optional.ofNullable(mediaDescriptionCompat.getDescription())
+                .map(CharSequence::toString)
+                .orElse(defStr);
+        String id = Optional.ofNullable(mediaDescriptionCompat.getMediaId())
+                .orElse(defStr);
+        return mediaMetadataCompatBuilder
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, name)//歌名
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, singer)//作者
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, icon)//歌曲封面
+                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, id)//歌曲id
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, mDuration)//歌曲时长
+                .build();
     }
 
     @Override
@@ -521,12 +692,12 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (mMediaPlayer != null) {
+        if (player != null) {
             mSeekBarThread.interrupt();
-            ToolUtil.write("MusicProgress", mMediaPlayer.getCurrentPosition());
-            mMediaPlayer.stop();
-            mMediaPlayer.release();
-            mMediaPlayer = null;
+            ToolUtil.write("MusicProgress", player.getCurrentPosition());
+            player.stop();
+            player.release();
+            player = null;
             mWifiLock.release();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 mAudioManager.abandonAudioFocusRequest(mAudioFocusRequest);
@@ -541,21 +712,21 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
 
     @Override
     public void onAudioBecomingNoisy() {
-        mMediaSession.getController().getTransportControls().pause();
+        mediaSession.getController().getTransportControls().pause();
     }
 
     @Override
     public void onActionPreMusic() {
-        mMediaSession.getController().getTransportControls().skipToPrevious();
+        mediaSession.getController().getTransportControls().skipToPrevious();
     }
 
     @Override
     public void onActionPlayMusic() {
-        mMediaSession.getController().getTransportControls().play();
+        mediaSession.getController().getTransportControls().play();
     }
 
     @Override
     public void onActionNextMusic() {
-        mMediaSession.getController().getTransportControls().skipToNext();
+        mediaSession.getController().getTransportControls().skipToNext();
     }
 }
