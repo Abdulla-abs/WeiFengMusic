@@ -1,13 +1,16 @@
 package com.wei.music;
 
 import android.support.v4.media.session.MediaSessionCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.wei.music.bean.PlaylistDTO;
 import com.wei.music.repository.MusicListRepository;
+import com.wei.music.service.MusicService;
 import com.wei.music.service.musicaction.MusicActionContract;
+import com.wei.music.service.musicaction.MusicIntentContract;
 import com.wei.music.utils.AudioFileFetcher;
 
 import java.util.Collections;
@@ -31,12 +34,38 @@ public class MusicSessionManager {
     private final MutableLiveData<List<PlaylistDTO>> _allPlaylistData = new MutableLiveData<>();
     public final LiveData<List<PlaylistDTO>> allPlaylistData = _allPlaylistData;
 
-    public final MutableLiveData<MusicActionContract> intent = new MutableLiveData<>();
+    public final MutableLiveData<MusicActionContract> action = new MutableLiveData<>();
+    private final MutableLiveData<MusicIntentContract> intent = new MutableLiveData<>();
     private final MusicListRepository musicListRepository;
+
+    private List<MediaSessionCompat.QueueItem> currentList = Collections.emptyList();
 
     @Inject
     public MusicSessionManager(MusicListRepository musicListRepository) {
         this.musicListRepository = musicListRepository;
+    }
+
+    public void onMusicIntent(MusicIntentContract intent, PlaybackStateCompat playbackState){
+        if (intent instanceof MusicIntentContract.ChangePlayListOrSkipToPosition){
+            MusicIntentContract.ChangePlayListOrSkipToPosition
+                    changePlayListOrSkipToPosition = (MusicIntentContract.ChangePlayListOrSkipToPosition) intent;
+            List<MediaSessionCompat.QueueItem> replace = changePlayListOrSkipToPosition.getReplace();
+            if (replace == currentList){
+                int startIndex = changePlayListOrSkipToPosition.getStartIndex();
+                Optional<Integer> actPlayIndex = Optional.ofNullable(playbackState.getExtras())
+                        .map(bundle -> bundle.getInt(MusicService.MUSIC_STATE_POSITION, -1))
+                        .filter(integer -> integer >= 0);
+                if (actPlayIndex.isPresent() && actPlayIndex.get() != startIndex){
+                    action.postValue(new MusicActionContract.OnSkipToPosition(startIndex));
+                }
+            }else {
+                currentList = changePlayListOrSkipToPosition.getReplace();
+                action.postValue(new MusicActionContract.ChangePlayQueue(
+                        changePlayListOrSkipToPosition.getReplace(),
+                        changePlayListOrSkipToPosition.getStartIndex()
+                ));
+            }
+        }
     }
 
     public Observable<List<PlaylistDTO>> loadDatabaseSongList() {

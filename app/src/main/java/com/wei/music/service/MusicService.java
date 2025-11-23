@@ -37,9 +37,10 @@ import com.wei.music.MusicSessionManager;
 import com.wei.music.R;
 import com.wei.music.repository.MusicListRepository;
 import com.wei.music.service.musicaction.MusicActionContract;
+import com.wei.music.service.playmode.RepeatMode;
+import com.wei.music.service.playmode.ShuffleMode;
 import com.wei.music.utils.MMKVUtils;
 import com.wei.music.utils.Resource;
-import com.wei.music.utils.ToolUtil;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,11 +50,6 @@ import java.util.function.Consumer;
 
 import abbas.fun.myutil.If;
 import dagger.hilt.android.AndroidEntryPoint;
-import io.reactivex.rxjava3.annotations.NonNull;
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.core.ObservableEmitter;
-import io.reactivex.rxjava3.core.ObservableOnSubscribe;
-import io.reactivex.rxjava3.core.ObservableSource;
 import io.reactivex.rxjava3.disposables.Disposable;
 import jakarta.inject.Inject;
 
@@ -73,7 +69,7 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
 
     private int currentIndex = 0;//歌曲位置
     private int mDuration = 0;//歌曲长度
-//    private int mAudioSessionId = 0;//可视化ID
+    //    private int mAudioSessionId = 0;//可视化ID
     private Thread mSeekBarThread;//进度条更新线程
 
     private class SeekBarThread implements Runnable {
@@ -130,33 +126,41 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
     }
 
     private void initObserver() {
-        musicSessionManager.intent.observeForever(new Observer<MusicActionContract>() {
+        musicSessionManager.action.observeForever(new Observer<MusicActionContract>() {
             @Override
             public void onChanged(MusicActionContract musicActionContract) {
-
                 if (musicActionContract instanceof MusicActionContract.ChangePlayQueue) {
                     MusicActionContract.ChangePlayQueue changePlayQueue = (MusicActionContract.ChangePlayQueue) musicActionContract;
-                    originQueues = changePlayQueue.getReplace();
-                    currentIndex = changePlayQueue.getStartIndex();
-                    currentQueue = originQueues;
-                    mediaSession.setQueue(currentQueue);
-                    startPlay();
-                } else if (musicActionContract instanceof MusicActionContract.OnPlayListClick) {
-                    MusicActionContract.OnPlayListClick playListClick = (MusicActionContract.OnPlayListClick) musicActionContract;
-                    originQueues = playListClick.getReplace();
-                    currentIndex = playListClick.getStartIndex();
-                    currentQueue = originQueues;
-                    mediaSession.setQueue(currentQueue);
+                    queueDatasetChangePlay(changePlayQueue.getReplace(), changePlayQueue.getStartIndex());
+                } else if (musicActionContract instanceof MusicActionContract.OnSkipToPosition) {
+                    currentIndex = ((MusicActionContract.OnSkipToPosition) musicActionContract).getNewPosition();
                     startPlay();
                 }
-
-
             }
         });
+
+    }
+
+    private void queueDatasetChangePlay(List<MediaSessionCompat.QueueItem> originQueues, int startIndex) {
+        MusicService.this.originQueues = originQueues;
+        currentQueue.clear();
+
+        MediaSessionCompat.QueueItem startItem = originQueues.get(startIndex);
+
+        if (shuffleMode == ShuffleMode.ON) {
+            currentQueue.addAll(originQueues);
+            Collections.shuffle(currentQueue);
+
+            currentIndex = currentQueue.indexOf(startItem);
+        } else {
+            currentQueue.addAll(originQueues);
+        }
+
+        startPlay();
     }
 
     private List<MediaSessionCompat.QueueItem> originQueues = new ArrayList<>();
-    private List<MediaSessionCompat.QueueItem> currentQueue = new ArrayList<>();
+    private final List<MediaSessionCompat.QueueItem> currentQueue = new ArrayList<>();
 
     private RepeatMode repeatMode = RepeatMode.OFF;
     private ShuffleMode shuffleMode = ShuffleMode.OFF;
@@ -203,6 +207,21 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         player = new MediaPlayer();
         player.setAudioSessionId(FIXED_AUDIO_SESSION_ID);
         player.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
+        player.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+            @Override
+            public void onPrepared(MediaPlayer mp) {
+                mDuration = mp.getDuration();
+                snapshot.setDuration(mDuration);
+                mediaSession.getController().getTransportControls().play();
+            }
+        });
+        player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+            @Override
+            public void onCompletion(MediaPlayer mp) {
+                mediaSession.getController().getTransportControls().skipToNext();
+                updateNotification();
+            }
+        });
         mWifiLock = ((WifiManager) getSystemService(WIFI_SERVICE)).createWifiLock(WifiManager.WIFI_MODE_FULL, "musicWifiLock");
         mWifiLock.acquire();
         mAudioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
@@ -236,61 +255,29 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
 
             player.reset();
 
-            Bundle extras = originQueues.get(currentIndex).getDescription().getExtras();
+            Bundle extras = currentQueue.get(currentIndex).getDescription().getExtras();
             if (extras == null) {
                 return;
             }
             int musicType = extras.getInt(MSCQIMusicType, -1);
             snapshot.setMusicType(musicType);
 
-            String mediaId = originQueues.get(currentIndex).getDescription().getMediaId();
+            String mediaId = currentQueue.get(currentIndex).getDescription().getMediaId();
             Disposable subscribe = musicListRepository.fetchSongUrl(musicType, mediaId)
-                    .flatMapObservable(new io.reactivex.rxjava3.functions.Function<Resource<Uri>, ObservableSource<Integer>>() {
+                    .subscribe(new io.reactivex.rxjava3.functions.Consumer<Resource<Uri>>() {
                         @Override
-                        public ObservableSource<Integer> apply(Resource<Uri> uriResource) throws Throwable {
-                            return Observable.create(new ObservableOnSubscribe<Integer>() {
-                                @Override
-                                public void subscribe(@NonNull ObservableEmitter<Integer> emitter) throws Throwable {
-                                    if (uriResource.isSuccess()) {
-                                        snapshot.setUrl(uriResource.getData().toString());
-                                        player.setDataSource(MusicService.this, uriResource.getData());
-                                        player.prepareAsync();
-                                        player.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-                                            @Override
-                                            public void onPrepared(MediaPlayer mp) {
-                                                mDuration = mp.getDuration();
-                                                snapshot.setDuration(mDuration);
-                                                emitter.onNext(1);
-                                            }
-                                        });
-                                        player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                                            @Override
-                                            public void onCompletion(MediaPlayer mp) {
-                                                mediaSession.getController().getTransportControls().skipToNext();
-                                                updateNotification();
-                                            }
-                                        });
-                                    } else {
-                                        emitter.onError(new RuntimeException(uriResource.getMessage()));
-                                    }
-                                }
-                            });
-                        }
-                    }).subscribe(new io.reactivex.rxjava3.functions.Consumer<Integer>() {
-                        @Override
-                        public void accept(Integer integer) throws Throwable {
-                            if (integer == 1) {
-                                mediaSession.getController().getTransportControls().play();
-                                //storeMusicState();
+                        public void accept(Resource<Uri> uriResource) throws Throwable {
+                            if (uriResource.isSuccess()) {
+                                snapshot.setUrl(uriResource.getData().toString());
+                                player.setDataSource(MusicService.this, uriResource.getData());
+                                player.prepareAsync();
 //                                if (Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
 //                                    mMediaPlayer.seekTo(ToolUtil.readInt("MusicProgress"), MediaPlayer.SEEK_CLOSEST);
 //                                else mMediaPlayer.seekTo((int) ToolUtil.readInt("MusicProgress"));
+                            } else {
+                                //
+                                Toast.makeText(MusicService.this, uriResource.getMessage(), Toast.LENGTH_SHORT).show();
                             }
-                        }
-                    }, new io.reactivex.rxjava3.functions.Consumer<Throwable>() {
-                        @Override
-                        public void accept(Throwable throwable) throws Throwable {
-
                         }
                     });
 
@@ -303,7 +290,7 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
 
     private void storeMusicState() {
         try {
-            MediaSessionCompat.QueueItem queueItem = originQueues.get(currentIndex);
+            MediaSessionCompat.QueueItem queueItem = currentQueue.get(currentIndex);
             MediaDescriptionCompat description = queueItem.getDescription();
             String defStr = "<unknow>";
             String name = Optional.ofNullable(description.getTitle())
@@ -411,9 +398,12 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         @Override
         public void onPlay() {
             super.onPlay();
-            if (player != null && originQueues != null) {
+            if (player != null && currentQueue != null) {
                 if (player.isPlaying()) {
                     player.pause();
+                    Bundle bundle = new Bundle();
+                    bundle.putInt(MUSIC_STATE_POSITION, currentIndex);
+                    mPlaybackState.setExtras(bundle);
                     mPlaybackState.setState(PlaybackStateCompat.STATE_PAUSED, player.getCurrentPosition(), 1);
                     mediaSession.setPlaybackState(mPlaybackState.build());
                 } else {
@@ -421,6 +411,9 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
                         player.start();
                         if (!mSeekBarThread.isAlive()) {
                             mSeekBarThread.start();
+                            Bundle bundle = new Bundle();
+                            bundle.putInt(MUSIC_STATE_POSITION, currentIndex);
+                            mPlaybackState.setExtras(bundle);
                             mPlaybackState.setState(PlaybackStateCompat.STATE_PLAYING, player.getCurrentPosition(), 1);
                             mediaSession.setPlaybackState(mPlaybackState.build());
                         }
@@ -435,9 +428,13 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         @Override
         public void onPause() {
             super.onPause();
-            if (player != null && originQueues != null) {
+            if (player != null && currentQueue != null) {
                 if (player.isPlaying()) {
                     player.pause();
+
+                    Bundle bundle = new Bundle();
+                    bundle.putInt(MUSIC_STATE_POSITION, currentIndex);
+                    mPlaybackState.setExtras(bundle);
                     mPlaybackState.setState(PlaybackStateCompat.STATE_PAUSED, player.getCurrentPosition(), 1);
                     mediaSession.setPlaybackState(mPlaybackState.build());
                 }
@@ -488,11 +485,6 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         @Override
         public void onSkipToPrevious() {
             super.onSkipToPrevious();
-//            if (player.getCurrentPosition() > 3000) {
-//                // 超过 3 秒：回到当前歌曲开头
-//                player.seekTo(0);
-//            } else {
-            // 否则跳上一首（列表循环时到最后一首）
             if (currentQueue.isEmpty()) return;
 
             if (currentIndex > 0) {
@@ -505,7 +497,6 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
             mediaSession.setPlaybackState(mPlaybackState.build());
 
             startPlay();
-//            }
         }
 
         @Override
@@ -574,7 +565,7 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
 
     private Optional<MediaMetadataCompat> resetMusicMetadata() {
         try {
-            MediaDescriptionCompat description = originQueues.get(currentIndex).getDescription();
+            MediaDescriptionCompat description = currentQueue.get(currentIndex).getDescription();
             MediaMetadataCompat mediaMetadataCompat = createMediaMetadataCompat(description);
             mediaSession.setMetadata(mediaMetadataCompat);
             return Optional.of(mediaMetadataCompat);
@@ -636,9 +627,9 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
     public void onLoadChildren(@androidx.annotation.NonNull String parentId, MediaBrowserServiceCompat.Result<List<MediaBrowserCompat.MediaItem>> result) {
         result.detach();
         mediaItems.clear();
-        if (parentId.equals(MUSIC_ALL) && originQueues != null) {
-            for (int i = 0; i < originQueues.size(); i++) {
-                MediaDescriptionCompat description = originQueues.get(i).getDescription();
+        if (parentId.equals(MUSIC_ALL) && currentQueue != null) {
+            for (int i = 0; i < currentQueue.size(); i++) {
+                MediaDescriptionCompat description = currentQueue.get(i).getDescription();
                 if (description == null) {
                     continue;
                 }
@@ -694,7 +685,6 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         super.onDestroy();
         if (player != null) {
             mSeekBarThread.interrupt();
-            ToolUtil.write("MusicProgress", player.getCurrentPosition());
             player.stop();
             player.release();
             player = null;

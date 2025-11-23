@@ -54,6 +54,7 @@ import com.wei.music.bean.UserMusicListBean;
 import com.wei.music.mapper.MediaMetadataInfo;
 import com.wei.music.mapper.MediaMetadataMapper;
 import com.wei.music.service.musicaction.MusicActionContract;
+import com.wei.music.service.musicaction.MusicIntentContract;
 import com.wei.music.utils.GlideLoadUtils;
 import com.wei.music.utils.Resource;
 import com.wei.music.utils.ToolUtil;
@@ -313,10 +314,11 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
             return;
         }
 
-        musicSessionManager.intent.postValue(new MusicActionContract.OnPlayListClick(
-                queueItems,
-                index
-        ));
+        PlaybackStateCompat playbackState = mMediaController.getPlaybackState();
+        musicSessionManager.onMusicIntent(
+                new MusicIntentContract.ChangePlayListOrSkipToPosition(queueItems, position),
+                playbackState
+        );
     }
 
     @Override

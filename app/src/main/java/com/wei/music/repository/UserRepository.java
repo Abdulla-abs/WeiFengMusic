@@ -18,7 +18,7 @@ import io.reactivex.rxjava3.functions.Function;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import retrofit2.Response;
 
-//@Singleton
+@Singleton
 public class UserRepository {
 
     private final LoginApi loginApi;

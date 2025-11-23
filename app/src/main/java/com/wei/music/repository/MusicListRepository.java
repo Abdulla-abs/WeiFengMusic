@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 
 import abbas.fun.myutil.Witch;
 import io.reactivex.rxjava3.annotations.NonNull;
@@ -28,6 +29,7 @@ import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.functions.BiFunction;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 
+@Singleton
 public class MusicListRepository {
 
     private final MusicDataSource localMusicDataSource;
@@ -125,11 +127,11 @@ public class MusicListRepository {
      * @return
      */
     public @NonNull Single<Resource<Uri>> fetchSongUrl(int musicType, String mediaId) {
-        MusicDataSource musicDataSource = Witch.<Integer, MusicDataSource>of(musicType)
+        return Witch.<Integer, MusicDataSource>of(musicType)
                 .with(SongType.LOCAL.type, localMusicDataSource)
                 .with(SongType.REMOTE.type, remoteMusicDataSource)
-                .witchOne();
-        return musicDataSource.getMusicUrl(Long.parseLong(mediaId))
+                .witchOne()
+                .getMusicUrl(Long.parseLong(mediaId))
                 .map(new io.reactivex.rxjava3.functions.Function<Resource<MusicUrlDTO.DataDTO>, Resource<Uri>>() {
                     @Override
                     public Resource<Uri> apply(Resource<MusicUrlDTO.DataDTO> dataDTOResource) throws Throwable {

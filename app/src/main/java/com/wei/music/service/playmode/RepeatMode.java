@@ -1,4 +1,4 @@
-package com.wei.music.service;
+package com.wei.music.service.playmode;
 
 import android.support.v4.media.session.PlaybackStateCompat;
 
