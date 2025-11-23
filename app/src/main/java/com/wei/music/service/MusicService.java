@@ -16,6 +16,7 @@ import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaDescriptionCompat;
@@ -69,26 +70,6 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
 
     private int currentIndex = 0;//歌曲位置
     private int mDuration = 0;//歌曲长度
-    //    private int mAudioSessionId = 0;//可视化ID
-    private Thread mSeekBarThread;//进度条更新线程
-
-    private class SeekBarThread implements Runnable {
-        @Override
-        public void run() {
-            while (!Thread.currentThread().isInterrupted()) {
-                if (player != null && player.isPlaying()) {
-                    mPlaybackState.setState(PlaybackStateCompat.STATE_PLAYING, player.getCurrentPosition(), 1);
-                    mediaSession.setPlaybackState(mPlaybackState.build());
-                    try {
-                        Thread.sleep(500);
-                    } catch (Exception e) {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
     private WifiManager.WifiLock mWifiLock;
     private AudioManager mAudioManager;
     private AudioAttributes mAudioAttributes;
@@ -111,6 +92,16 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
     private final List<MediaBrowserCompat.MediaItem> mediaItems = new ArrayList<>();
     private final List<MediaBrowserCompat.MediaItem> mLikeList = new ArrayList<>();
 
+    private List<MediaSessionCompat.QueueItem> originQueues = new ArrayList<>();
+    private final List<MediaSessionCompat.QueueItem> currentQueue = new ArrayList<>();
+
+    private RepeatMode repeatMode = RepeatMode.OFF;
+    private ShuffleMode shuffleMode = ShuffleMode.OFF;
+
+    public static int FIXED_AUDIO_SESSION_ID = -1;
+
+    private PlayerPollingHandler pollingHandler;
+
     @Inject
     MusicSessionManager musicSessionManager;
     @Inject
@@ -123,6 +114,71 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         initMediaPlayer();
         initMediaSession();
         initObserver();
+    }
+
+    private void initMediaPlayer() {
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+        intentFilter.addAction("prevMusic");
+        intentFilter.addAction("playMusic");
+        intentFilter.addAction("nextMusic");
+        mMediaServiceRec = new MediaServiceReceiver(this);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(mMediaServiceRec, intentFilter, RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(mMediaServiceRec, intentFilter);
+        }
+
+        player = new MediaPlayer();
+        player.setAudioSessionId(FIXED_AUDIO_SESSION_ID);
+        player.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
+        player.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+            @Override
+            public void onPrepared(MediaPlayer mp) {
+                mDuration = mp.getDuration();
+                snapshot.setDuration(mDuration);
+                mediaSession.getController().getTransportControls().play();
+            }
+        });
+        player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+            @Override
+            public void onCompletion(MediaPlayer mp) {
+                mediaSession.getController().getTransportControls().skipToNext();
+                updateNotification();
+            }
+        });
+        mWifiLock = ((WifiManager) getSystemService(WIFI_SERVICE)).createWifiLock(WifiManager.WIFI_MODE_FULL, "musicWifiLock");
+        mWifiLock.acquire();
+        mAudioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        FIXED_AUDIO_SESSION_ID = player.getAudioSessionId();
+
+
+        //   mPlayModel = ToolUtil.readInt("PlayModel");
+    }
+
+    private void initMediaSession() {
+        mediaSession = new MediaSessionCompat(this, NoticeName);
+        mPlaybackState = new PlaybackStateCompat.Builder().setActions(PlaybackStateCompat.ACTION_PLAY | PlaybackStateCompat.ACTION_PAUSE | PlaybackStateCompat.ACTION_SKIP_TO_NEXT | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS | PlaybackStateCompat.ACTION_SEEK_TO);
+        mediaSession.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS | MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
+        mediaSession.setMediaButtonReceiver(null);
+        mediaSession.setPlaybackState(mPlaybackState.build());
+        mediaSession.setCallback(mCallback);
+        setSessionToken(mediaSession.getSessionToken());
+        mediaSession.setActive(true);
+
+        pollingHandler = new PlayerPollingHandler(Looper.getMainLooper(), player, mPlaybackState, mediaSession);
+
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
+        Intent intentNext = new Intent("nextMusic");
+        nextAction = PendingIntent.getBroadcast(getApplicationContext(), 3, intentNext, flags);
+
+        Intent intentPlay = new Intent("playMusic");
+        playAction = PendingIntent.getBroadcast(getApplicationContext(), 2, intentPlay, flags);
+
+        Intent intentPrev = new Intent("prevMusic");
+        prevAction = PendingIntent.getBroadcast(getApplicationContext(), 1, intentPrev, flags);
+
+        MusicServiceModeHelper.initMode(mediaSession.getController().getTransportControls());
     }
 
     private void initObserver() {
@@ -159,78 +215,6 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
         startPlay();
     }
 
-    private List<MediaSessionCompat.QueueItem> originQueues = new ArrayList<>();
-    private final List<MediaSessionCompat.QueueItem> currentQueue = new ArrayList<>();
-
-    private RepeatMode repeatMode = RepeatMode.OFF;
-    private ShuffleMode shuffleMode = ShuffleMode.OFF;
-
-    public static int FIXED_AUDIO_SESSION_ID = -1;
-
-    private void initMediaSession() {
-        mediaSession = new MediaSessionCompat(this, NoticeName);
-        mPlaybackState = new PlaybackStateCompat.Builder().setActions(PlaybackStateCompat.ACTION_PLAY | PlaybackStateCompat.ACTION_PAUSE | PlaybackStateCompat.ACTION_SKIP_TO_NEXT | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS | PlaybackStateCompat.ACTION_SEEK_TO);
-        mediaSession.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS | MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
-        mediaSession.setMediaButtonReceiver(null);
-        mediaSession.setPlaybackState(mPlaybackState.build());
-        mediaSession.setCallback(mCallback);
-        setSessionToken(mediaSession.getSessionToken());
-        mediaSession.setActive(true);
-
-        int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
-        Intent intentNext = new Intent("nextMusic");
-        nextAction = PendingIntent.getBroadcast(getApplicationContext(), 3, intentNext, flags);
-
-        Intent intentPlay = new Intent("playMusic");
-        playAction = PendingIntent.getBroadcast(getApplicationContext(), 2, intentPlay, flags);
-
-        Intent intentPrev = new Intent("prevMusic");
-        prevAction = PendingIntent.getBroadcast(getApplicationContext(), 1, intentPrev, flags);
-
-        MusicServiceModeHelper.initMode(mediaSession.getController().getTransportControls());
-    }
-
-    private void initMediaPlayer() {
-
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
-        intentFilter.addAction("prevMusic");
-        intentFilter.addAction("playMusic");
-        intentFilter.addAction("nextMusic");
-        mMediaServiceRec = new MediaServiceReceiver(this);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(mMediaServiceRec, intentFilter, RECEIVER_NOT_EXPORTED);
-        } else {
-            registerReceiver(mMediaServiceRec, intentFilter);
-        }
-
-        player = new MediaPlayer();
-        player.setAudioSessionId(FIXED_AUDIO_SESSION_ID);
-        player.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
-        player.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-            @Override
-            public void onPrepared(MediaPlayer mp) {
-                mDuration = mp.getDuration();
-                snapshot.setDuration(mDuration);
-                mediaSession.getController().getTransportControls().play();
-            }
-        });
-        player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-            @Override
-            public void onCompletion(MediaPlayer mp) {
-                mediaSession.getController().getTransportControls().skipToNext();
-                updateNotification();
-            }
-        });
-        mWifiLock = ((WifiManager) getSystemService(WIFI_SERVICE)).createWifiLock(WifiManager.WIFI_MODE_FULL, "musicWifiLock");
-        mWifiLock.acquire();
-        mAudioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
-        FIXED_AUDIO_SESSION_ID = player.getAudioSessionId();
-        mSeekBarThread = new Thread(new SeekBarThread());
-
-
-        //   mPlayModel = ToolUtil.readInt("PlayModel");
-    }
 
     private boolean requestFocus() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -409,14 +393,12 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
                 } else {
                     if (requestFocus()) {
                         player.start();
-                        if (!mSeekBarThread.isAlive()) {
-                            mSeekBarThread.start();
-                            Bundle bundle = new Bundle();
-                            bundle.putInt(MUSIC_STATE_POSITION, currentIndex);
-                            mPlaybackState.setExtras(bundle);
-                            mPlaybackState.setState(PlaybackStateCompat.STATE_PLAYING, player.getCurrentPosition(), 1);
-                            mediaSession.setPlaybackState(mPlaybackState.build());
-                        }
+                        pollingHandler.start();
+                        Bundle bundle = new Bundle();
+                        bundle.putInt(MUSIC_STATE_POSITION, currentIndex);
+                        mPlaybackState.setExtras(bundle);
+                        mPlaybackState.setState(PlaybackStateCompat.STATE_PLAYING, player.getCurrentPosition(), 1);
+                        mediaSession.setPlaybackState(mPlaybackState.build());
                     }
                 }
                 updateNotification();
@@ -684,7 +666,7 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
     public void onDestroy() {
         super.onDestroy();
         if (player != null) {
-            mSeekBarThread.interrupt();
+            pollingHandler.stop();
             player.stop();
             player.release();
             player = null;

@@ -4,6 +4,7 @@ import android.content.Context;
 
 import com.wei.music.App;
 import com.wei.music.database.AppDatabase;
+import com.wei.music.database.dao.SearchHistoryDao;
 import com.wei.music.database.dao.UserDao;
 import com.wei.music.database.dao.UserSubCountDao;
 
@@ -30,6 +31,11 @@ public abstract class DatabaseModule {
     @Provides
     public static UserDao providerUserDao(AppDatabase appDatabase) {
         return appDatabase.userDao();
+    }
+
+    @Provides
+    public static SearchHistoryDao providerHistoryDao(AppDatabase appDatabase) {
+        return appDatabase.searchHistoryDao();
     }
 
 }

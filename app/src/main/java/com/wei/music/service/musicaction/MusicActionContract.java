@@ -7,7 +7,7 @@ import java.util.List;
 public interface MusicActionContract {
 
     class OnSkipToPosition implements MusicActionContract{
-        private int newPosition;
+        private final int newPosition;
 
         public OnSkipToPosition(int newPosition) {
             this.newPosition = newPosition;
@@ -44,7 +44,4 @@ public interface MusicActionContract {
 
     }
 
-    class SkipTo implements MusicActionContract {
-
-    }
 }

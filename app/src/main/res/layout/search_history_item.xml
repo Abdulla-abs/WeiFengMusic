@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/text"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/search_history_bg"
+    android:paddingStart="8dp"
+    android:paddingTop="2dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="2dp"
+    android:text="Hello World"
+    android:enabled="true"
+    android:clickable="true"
+    android:textColor="@android:color/white" />

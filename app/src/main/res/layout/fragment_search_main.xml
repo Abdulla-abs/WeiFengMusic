@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".activity.search.SearchMainFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:paddingLeft="@dimen/view_margin_14dp"
+            android:paddingRight="@dimen/view_margin_14dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/search_history"
+                android:textSize="@dimen/title_text_size" />
+
+            <!--            <ImageView-->
+            <!--                android:layout_width="@dimen/image_but_size"-->
+            <!--                android:layout_height="@dimen/image_but_size"-->
+            <!--                android:layout_gravity="right"-->
+            <!--                android:layout_marginLeft="@dimen/view_margin_14dp"-->
+            <!--                android:src="@drawable/ic_delete" />-->
+
+        </FrameLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_history"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            tools:listitem="@layout/search_history_item" />
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>

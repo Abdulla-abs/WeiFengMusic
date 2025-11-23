@@ -72,7 +72,7 @@
             android:theme="@style/TransparentActivityTheme" />
 
         <activity
-            android:name=".activity.SearchActivity"
+            android:name=".activity.search.SearchActivity"
             android:theme="@style/AppTheme" />
 
         <activity

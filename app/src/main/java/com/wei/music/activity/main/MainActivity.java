@@ -7,9 +7,7 @@ import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
-import android.os.RemoteException;
 import android.support.v4.media.MediaBrowserCompat;
-import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
@@ -39,32 +37,25 @@ import com.wei.music.MusicSessionManager;
 import com.wei.music.R;
 import com.wei.music.activity.MusicListDialog;
 import com.wei.music.activity.play.PlayerActivity;
-import com.wei.music.activity.SearchActivity;
-import com.wei.music.fragment.AboutFragment;
+import com.wei.music.activity.search.SearchActivity;
+import com.wei.music.activity.about.AboutFragment;
 import com.wei.music.fragment.home.HomeFragment;
 import com.wei.music.fragment.MoreFragment;
 import com.wei.music.mapper.MediaMetadataInfo;
 import com.wei.music.mapper.MediaMetadataMapper;
-import com.wei.music.service.CurrentMusicSnapshot;
 import com.wei.music.service.MusicService;
-import com.wei.music.service.MusicServiceModeHelper;
-import com.wei.music.service.musicaction.MusicActionContract;
 import com.wei.music.utils.ColorUtil;
 import com.wei.music.utils.GlideLoadUtils;
-import com.wei.music.utils.MMKVUtils;
 import com.wei.music.utils.ToolUtil;
 import com.wei.music.view.MarqueeView;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import androidx.lifecycle.ViewModelProvider;
 import androidx.viewpager2.widget.ViewPager2;
 
 import java.util.ArrayList;
-import java.util.Optional;
-import java.util.function.Consumer;
 
 import com.wei.music.adapter.MainPagerAdapter;
 

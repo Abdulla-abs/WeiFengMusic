@@ -8,19 +8,30 @@ import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
 
 import com.wei.music.bean.PlaylistDTO;
+import com.wei.music.bean.SearchHistoryVO;
 import com.wei.music.bean.UserLoginBean;
+import com.wei.music.database.dao.SearchHistoryDao;
 import com.wei.music.database.dao.UserDao;
 import com.wei.music.database.dao.UserSubCountDao;
 import com.wei.music.database.typeconverter.PlaylistConverters;
+import com.wei.music.database.typeconverter.SearchHistoryConverters;
 import com.wei.music.database.typeconverter.UserDtoConverters;
 
-@Database(entities = {PlaylistDTO.class, UserLoginBean.class}, version = 3, exportSchema = false)
-@TypeConverters({PlaylistConverters.class, UserDtoConverters.class})
+@Database(
+        entities = {PlaylistDTO.class, UserLoginBean.class, SearchHistoryVO.class},
+        version = 4,
+        exportSchema = false
+)
+@TypeConverters({
+        PlaylistConverters.class, UserDtoConverters.class, SearchHistoryConverters.class
+})
 public abstract class AppDatabase extends RoomDatabase {
 
     public abstract UserDao userDao();
 
     public abstract UserSubCountDao userSubCountDao();
+
+    public abstract SearchHistoryDao searchHistoryDao();
 
 
     public static AppDatabase getInstance(Context context) {
