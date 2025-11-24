@@ -1,3 +1,0 @@
-include ':app'
-rootProject.name = "微风音乐"
-include ':myutil'

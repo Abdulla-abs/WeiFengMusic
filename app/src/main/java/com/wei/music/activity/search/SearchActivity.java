@@ -1,6 +1,7 @@
 package com.wei.music.activity.search;
 
 import android.os.Bundle;
+import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
@@ -30,7 +31,6 @@ public class SearchActivity extends AppCompatActivity {
 
     private void initView() {
         binding.viewpager.setAdapter(new SearchPagerAdapter(this));
-
 
     }
 

@@ -11,7 +11,6 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-import com.wei.music.BuildDependencies;
 import com.wei.music.databinding.AboutFragmentBinding;
 
 import java.util.ArrayList;
@@ -43,7 +42,7 @@ public class AboutFragment extends Fragment {
         });
         binding.aboutThankRecycler.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.aboutThankRecycler.setAdapter(adapter);
-        ArrayList<String> list = new ArrayList<>(BuildDependencies.LIBRARIES);
+        ArrayList<String> list = new ArrayList<>();
         list.add(0, "致谢：");
         adapter.submitList(list);
 

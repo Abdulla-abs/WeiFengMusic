@@ -12,8 +12,6 @@ import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.blankj.utilcode.util.SpanUtils;
-import com.wei.music.BuildDependencies;
 import com.wei.music.databinding.ThankItemBinding;
 
 public class ThankAdapter extends ListAdapter<String, ThankAdapter.ViewHolder> {
