@@ -22,6 +22,7 @@ public class FlowLayout extends ViewGroup {
     public void setVerticalSpacing(float pixelSize) {
         mVerticalSpacing = pixelSize;
     }
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int selfWidth = resolveSize(0, widthMeasureSpec);
@@ -35,27 +36,40 @@ public class FlowLayout extends ViewGroup {
         int childTop = paddingTop;
         int lineHeight = 0;
 
-        //通过计算每一个子控件的高度，得到自己的高度
+        // 新增：记录当前行是否已经有item了
+        boolean isFirstInLine = true;
+
         for (int i = 0, childCount = getChildCount(); i < childCount; ++i) {
             View childView = getChildAt(i);
+            if (childView.getVisibility() == View.GONE) {
+                continue;
+            }
+
             LayoutParams childLayoutParams = childView.getLayoutParams();
             childView.measure(
-                getChildMeasureSpec(widthMeasureSpec, paddingLeft + paddingRight,
-                                    childLayoutParams.width),
-                getChildMeasureSpec(heightMeasureSpec, paddingTop + paddingBottom,
-                                    childLayoutParams.height));
+                    getChildMeasureSpec(widthMeasureSpec, paddingLeft + paddingRight, childLayoutParams.width),
+                    getChildMeasureSpec(heightMeasureSpec, paddingTop + paddingBottom, childLayoutParams.height));
+
             int childWidth = childView.getMeasuredWidth();
             int childHeight = childView.getMeasuredHeight();
 
             lineHeight = Math.max(childHeight, lineHeight);
 
-            if (childLeft + childWidth + paddingRight > selfWidth) {
+            // 判断是否需要换行
+            if (!isFirstInLine && childLeft + childWidth + paddingRight > selfWidth) {
+                // 换行
                 childLeft = paddingLeft;
                 childTop += mVerticalSpacing + lineHeight;
                 lineHeight = childHeight;
-            } else {
-                childLeft += childWidth + mHorizontalSpacing;
+                isFirstInLine = true;  // 新行第一个
             }
+
+            // 如果不是当前行的第一个，才加上横向间距
+            if (!isFirstInLine) {
+                childLeft += mHorizontalSpacing;
+            }
+
+            isFirstInLine = false;  // 标记这行已经有item了
         }
 
         int wantedHeight = childTop + lineHeight + paddingBottom;
@@ -72,13 +86,12 @@ public class FlowLayout extends ViewGroup {
 
         int childLeft = paddingLeft;
         int childTop = paddingTop;
-
         int lineHeight = 0;
 
-        //根据子控件的宽高，计算子控件应该出现的位置。
+        boolean isFirstInLine = true;  // 同样加上这个标志
+
         for (int i = 0, childCount = getChildCount(); i < childCount; ++i) {
             View childView = getChildAt(i);
-
             if (childView.getVisibility() == View.GONE) {
                 continue;
             }
@@ -88,13 +101,23 @@ public class FlowLayout extends ViewGroup {
 
             lineHeight = Math.max(childHeight, lineHeight);
 
-            if (childLeft + childWidth + paddingRight > myWidth) {
+            // 换行判断
+            if (!isFirstInLine && childLeft + childWidth + paddingRight > myWidth) {
                 childLeft = paddingLeft;
                 childTop += mVerticalSpacing + lineHeight;
                 lineHeight = childHeight;
+                isFirstInLine = true;
             }
+
+            // 关键修复：只有不是本行第一个时才加横向间距
+            if (!isFirstInLine) {
+                childLeft += mHorizontalSpacing;
+            }
+
             childView.layout(childLeft, childTop, childLeft + childWidth, childTop + childHeight);
-            childLeft += childWidth + mHorizontalSpacing;
+
+            childLeft += childWidth;  // 移动到下一个位置（不直接加 spacing，由上面控制）
+            isFirstInLine = false;
         }
     }
 }

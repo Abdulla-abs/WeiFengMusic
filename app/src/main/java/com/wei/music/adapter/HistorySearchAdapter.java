@@ -21,7 +21,7 @@ public class HistorySearchAdapter extends ListAdapter<SearchHistoryVO, HistorySe
         super(new DiffUtil.ItemCallback<SearchHistoryVO>() {
             @Override
             public boolean areItemsTheSame(@NonNull SearchHistoryVO oldItem, @NonNull SearchHistoryVO newItem) {
-                return oldItem.getId() == newItem.getId();
+                return oldItem.getContent().equals(newItem.getContent());
             }
 
             @Override

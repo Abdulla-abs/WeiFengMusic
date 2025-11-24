@@ -42,7 +42,7 @@ public class SearchMainFragment extends Fragment {
     // TODO: Rename and change types of parameters
     private String mParam1;
     private String mParam2;
-    private com.wei.music.databinding.FragmentSearchMainBinding binding;
+    private FragmentSearchMainBinding binding;
 
     public SearchMainFragment() {
         // Required empty public constructor
@@ -108,12 +108,14 @@ public class SearchMainFragment extends Fragment {
         historySearchAdapter.setItemClickListener(new HistorySearchAdapter.OnItemClickListener() {
             @Override
             public void onClickKeywords(String keyword) {
-
+                searchViewModel.searchIntentMutableLiveData.postValue(
+                        new SearchIntent.Search(keyword)
+                );
             }
 
             @Override
             public void onLongClickKeyWords(String keyword) {
-
+                //todo maybe delete the words
             }
         });
         binding.rvHistory.setAdapter(historySearchAdapter);

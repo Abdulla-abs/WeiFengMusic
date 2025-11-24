@@ -1,5 +1,6 @@
 package com.wei.music.bean;
 
+import androidx.annotation.NonNull;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
@@ -8,26 +9,22 @@ import java.util.Date;
 @Entity
 public class SearchHistoryVO {
 
-    @PrimaryKey(autoGenerate = true)
-    private int id;
-
+    @PrimaryKey
+    @NonNull
     private String content;
 
     private Date searchTime;
 
-    public int getId() {
-        return id;
+    public SearchHistoryVO() {
+        content = "unKnow";
     }
 
-    public void setId(int id) {
-        this.id = id;
-    }
-
+    @NonNull
     public String getContent() {
         return content;
     }
 
-    public void setContent(String content) {
+    public void setContent(@NonNull String content) {
         this.content = content;
     }
 
@@ -38,4 +35,6 @@ public class SearchHistoryVO {
     public void setSearchTime(Date searchTime) {
         this.searchTime = searchTime;
     }
+
+
 }

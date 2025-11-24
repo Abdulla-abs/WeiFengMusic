@@ -81,48 +81,6 @@ public class RemoteSongDataSource extends MusicDataSource {
                         return TypeWrapper.remote(new UserMusicListBean.PlayList());
                     }
                 });
-
-//        return nestedApi.getSongListDetail(songList.getId())
-//                .subscribeOn(Schedulers.io())
-//                .onErrorReturn(new Function<Throwable, UserMusicListBean>() {
-//                    @Override
-//                    public UserMusicListBean apply(Throwable throwable) throws Throwable {
-//                        return new UserMusicListBean();
-//                    }
-//                })
-//                .map(new Function<UserMusicListBean, List<MediaSessionCompat.QueueItem>>() {
-//                    @Override
-//                    public List<MediaSessionCompat.QueueItem> apply(UserMusicListBean userMusicListBean) throws Throwable {
-//                        UserMusicListBean.PlayList playList = Optional.ofNullable(userMusicListBean.playlist)
-//                                .orElse(new UserMusicListBean.PlayList());
-//                        List<MediaSessionCompat.QueueItem> list = new ArrayList<>();
-//                        for (int i = 0; i < playList.tracks.size(); i++) {
-//                            MediaMetadataCompat metadata = new MediaMetadataCompat.Builder()
-//                                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, playList.tracks.get(i).name)
-//                                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, playList.tracks.get(i).ar.get(0).name)
-//                                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, playList.tracks.get(i).al.picUrl)
-//                                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, String.valueOf(playList.tracks.get(i).id))
-//                                    .build();
-//
-//                            MediaDescriptionCompat desc = metadata.getDescription();
-//
-//                            Bundle extras = new Bundle();
-//                            extras.putInt(MusicService.MSCQIMusicType, SongType.REMOTE.type);  // 关键在这里
-//
-//                            MediaDescriptionCompat finalDesc = new MediaDescriptionCompat.Builder()
-//                                    .setMediaId(desc.getMediaId())
-//                                    .setTitle(desc.getTitle())
-//                                    .setSubtitle(desc.getSubtitle())
-//                                    .setIconUri(desc.getIconUri())
-//                                    .setDescription(desc.getDescription())
-//                                    .setExtras(extras)  // 手动设置
-//                                    .build();
-//
-//                            list.add(new MediaSessionCompat.QueueItem(finalDesc, i));
-//                        }
-//                        return list;
-//                    }
-//                });
     }
 
     @Override

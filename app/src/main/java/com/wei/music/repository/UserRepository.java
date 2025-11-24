@@ -1,5 +1,7 @@
 package com.wei.music.repository;
 
+import androidx.room.rxjava3.EmptyResultSetException;
+
 import com.wei.music.bean.BaseResp;
 import com.wei.music.bean.UserLoginBean;
 import com.wei.music.database.dao.UserDao;
@@ -48,6 +50,7 @@ public class UserRepository {
 
     public Single<Resource<UserLoginBean>> getCurrentUser() {
         return userDao.getCurrentUser()
+                .subscribeOn(Schedulers.io())
                 .map(new Function<UserLoginBean, Resource<UserLoginBean>>() {
                     @Override
                     public Resource<UserLoginBean> apply(UserLoginBean userLoginBean) throws Throwable {
@@ -57,10 +60,13 @@ public class UserRepository {
                 .onErrorReturn(new Function<Throwable, Resource<UserLoginBean>>() {
                     @Override
                     public Resource<UserLoginBean> apply(Throwable throwable) throws Throwable {
+                        //未登录状态下room空数据情况下将会返回此异常。我们忽略此异常
+                        if (throwable instanceof EmptyResultSetException){
+                            return new Resource.Empty<>();
+                        }
                         return new Resource.Error<>(throwable.getMessage());
                     }
-                })
-                .subscribeOn(Schedulers.io());
+                });
     }
 
     public @NonNull Observable<Resource<UserLoginBean>> login(String phone, String captcha) {

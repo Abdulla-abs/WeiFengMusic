@@ -19,7 +19,7 @@ import com.wei.music.database.typeconverter.UserDtoConverters;
 
 @Database(
         entities = {PlaylistDTO.class, UserLoginBean.class, SearchHistoryVO.class},
-        version = 4,
+        version = 5,
         exportSchema = false
 )
 @TypeConverters({

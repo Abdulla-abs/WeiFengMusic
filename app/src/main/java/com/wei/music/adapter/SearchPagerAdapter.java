@@ -29,4 +29,6 @@ public class SearchPagerAdapter extends FragmentStateAdapter {
     public int getItemCount() {
         return pagers.length;
     }
+
+
 }

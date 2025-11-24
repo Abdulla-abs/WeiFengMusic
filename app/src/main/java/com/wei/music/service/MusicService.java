@@ -547,6 +547,7 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
 
     private Optional<MediaMetadataCompat> resetMusicMetadata() {
         try {
+            if (currentQueue.isEmpty()) return Optional.empty();
             MediaDescriptionCompat description = currentQueue.get(currentIndex).getDescription();
             MediaMetadataCompat mediaMetadataCompat = createMediaMetadataCompat(description);
             mediaSession.setMetadata(mediaMetadataCompat);

@@ -2,6 +2,7 @@ package com.wei.music.network;
 
 import com.wei.music.bean.BaseResp;
 import com.wei.music.bean.MusicUrlDTO;
+import com.wei.music.bean.SearchResultDTO;
 import com.wei.music.bean.SubCountBean;
 import com.wei.music.bean.UserLoginBean;
 import com.wei.music.bean.UserMusicListBean;
@@ -35,8 +36,20 @@ public interface NestedApi {
     Single<UserMusicListBean> getSongListDetail(@Query("id") Long songGroupId);
 
     @GET("/song/url")
-    Single<Response<MusicUrlDTO>> getMusicUrl(@Query("id")Long musicId);
+    Single<Response<MusicUrlDTO>> getMusicUrl(@Query("id") Long musicId);
 
     @GET("/like")
     Single<BaseResp<String>> likeMusic(boolean like, int id);
+
+    /**
+     * @param keywords keywords : 关键词
+     * @param limit 返回数量 , 默认为 30
+     * @param offset 偏移数量，用于分页 , 如 : 如 :( 页数 -1)*30, 其中 30 为 limit 的值 , 默认为 0
+     * @param type 默认为 1 即单曲 , 取值意义 : 1: 单曲, 10: 专辑, 100: 歌手, 1000: 歌单, 1002: 用户, 1004: MV,
+     *             1006: 歌词, 1009: 电台, 1014: 视频, 1018:综合, 2000:声音(搜索声音返回字段格式会不一样)
+     */
+    @GET("/search")
+    Single<SearchResultDTO> searchMusic(@Query("keywords") String keywords, @Query("limit") Integer limit,
+                                        @Query("offset") Integer offset,
+                                        @Query("type") Integer type);
 }
