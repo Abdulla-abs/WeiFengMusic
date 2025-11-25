@@ -45,26 +45,29 @@ public class MusicSessionManager {
         this.musicListRepository = musicListRepository;
     }
 
-    public void onMusicIntent(MusicIntentContract intent, PlaybackStateCompat playbackState){
-        if (intent instanceof MusicIntentContract.ChangePlayListOrSkipToPosition){
-            MusicIntentContract.ChangePlayListOrSkipToPosition
-                    changePlayListOrSkipToPosition = (MusicIntentContract.ChangePlayListOrSkipToPosition) intent;
+    public void onMusicIntent(MusicIntentContract intent) {
+        if (intent instanceof MusicIntentContract.ChangePlayListOrSkipToPosition) {
+            MusicIntentContract.ChangePlayListOrSkipToPosition changePlayListOrSkipToPosition =
+                    (MusicIntentContract.ChangePlayListOrSkipToPosition) intent;
             List<MediaSessionCompat.QueueItem> replace = changePlayListOrSkipToPosition.getReplace();
-            if (replace == currentList){
+            PlaybackStateCompat playbackState = changePlayListOrSkipToPosition.getPlaybackState();
+            if (replace == currentList) {
                 int startIndex = changePlayListOrSkipToPosition.getStartIndex();
                 Optional<Integer> actPlayIndex = Optional.ofNullable(playbackState.getExtras())
                         .map(bundle -> bundle.getInt(MusicService.MUSIC_STATE_POSITION, -1))
                         .filter(integer -> integer >= 0);
-                if (actPlayIndex.isPresent() && actPlayIndex.get() != startIndex){
+                if (actPlayIndex.isPresent() && actPlayIndex.get() != startIndex) {
                     action.postValue(new MusicActionContract.OnSkipToPosition(startIndex));
                 }
-            }else {
+            } else {
                 currentList = changePlayListOrSkipToPosition.getReplace();
                 action.postValue(new MusicActionContract.ChangePlayQueue(
                         changePlayListOrSkipToPosition.getReplace(),
                         changePlayListOrSkipToPosition.getStartIndex()
                 ));
             }
+        } else if (intent instanceof MusicIntentContract.InsertMusicAndPlay) {
+            action.postValue(new MusicActionContract.Insert(((MusicIntentContract.InsertMusicAndPlay) intent).getInsert()));
         }
     }
 
@@ -83,7 +86,7 @@ public class MusicSessionManager {
                             @Override
                             public void accept(PlaylistDTO playlistDTO) {
                                 playlistDTOS.remove(playlistDTO);
-                                playlistDTOS.add(0,playlistDTO);
+                                playlistDTOS.add(0, playlistDTO);
                             }
                         });
                         _allPlaylistData.postValue(playlistDTOS);

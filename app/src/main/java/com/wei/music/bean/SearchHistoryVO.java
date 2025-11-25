@@ -13,7 +13,7 @@ public class SearchHistoryVO {
     @NonNull
     private String content;
 
-    private Date searchTime;
+    private Long searchTime;
 
     public SearchHistoryVO() {
         content = "unKnow";
@@ -28,13 +28,12 @@ public class SearchHistoryVO {
         this.content = content;
     }
 
-    public Date getSearchTime() {
+
+    public Long getSearchTime() {
         return searchTime;
     }
 
-    public void setSearchTime(Date searchTime) {
+    public void setSearchTime(Long searchTime) {
         this.searchTime = searchTime;
     }
-
-
 }

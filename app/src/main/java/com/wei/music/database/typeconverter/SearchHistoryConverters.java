@@ -27,4 +27,5 @@ public class SearchHistoryConverters {
             return instance.getTime();
         }
     }
+
 }

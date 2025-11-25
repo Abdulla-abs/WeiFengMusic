@@ -19,6 +19,7 @@ import java.util.function.Consumer;
 public class SearchResultAdapter extends ListAdapter<SearchResultDTO.ResultDTO.SongsDTO,
         SearchResultAdapter.ViewHolder> {
 
+    private OnClickListener onClickListener;
 
     protected SearchResultAdapter(@NonNull DiffUtil.ItemCallback<SearchResultDTO.ResultDTO.SongsDTO> diffCallback) {
         super(diffCallback);
@@ -50,15 +51,32 @@ public class SearchResultAdapter extends ListAdapter<SearchResultDTO.ResultDTO.S
                                 holder.binding.musicMsg.setText(s);
                             }
                         });
+
+        holder.binding.getRoot().setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (onClickListener != null){
+                    onClickListener.onItemClick(songsDTO);
+                }
+            }
+        });
+    }
+
+    public void setOnClickListener(OnClickListener onClickListener) {
+        this.onClickListener = onClickListener;
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
 
-        private ItemMusicListBinding binding;
+        private final ItemMusicListBinding binding;
 
         public ViewHolder(@NonNull ItemMusicListBinding binding) {
             super(binding.getRoot());
             this.binding = binding;
         }
+    }
+
+    public interface OnClickListener{
+        void onItemClick(SearchResultDTO.ResultDTO.SongsDTO songsDTO);
     }
 }

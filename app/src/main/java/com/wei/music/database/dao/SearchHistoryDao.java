@@ -16,11 +16,11 @@ import io.reactivex.rxjava3.core.Single;
 @Dao
 public interface SearchHistoryDao {
 
-    @Query("SELECT * FROM SEARCHHISTORYVO")
-    public Observable<List<SearchHistoryVO>> observerSearchHistory();
+    @Query("SELECT * FROM SEARCHHISTORYVO ORDER BY searchTime DESC LIMIT :limit")
+    public Observable<List<SearchHistoryVO>> observerSearchHistory(int limit);
 
-    @Query("SELECT * FROM SEARCHHISTORYVO")
-    public Single<List<SearchHistoryVO>> querySearchHistory();
+    @Query("SELECT * FROM SEARCHHISTORYVO ORDER BY searchTime DESC LIMIT :limit")
+    public Single<List<SearchHistoryVO>> querySearchHistory(int limit);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     public void storeHistory(SearchHistoryVO historyVO);

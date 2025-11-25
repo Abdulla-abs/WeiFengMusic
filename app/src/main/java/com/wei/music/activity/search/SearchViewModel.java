@@ -70,7 +70,7 @@ public class SearchViewModel extends ViewModel {
 
     public void storeSearchKeywords(SearchIntent.Search search) {
         SearchHistoryVO searchHistoryVO = new SearchHistoryVO();
-        searchHistoryVO.setSearchTime(Calendar.getInstance().getTime());
+        searchHistoryVO.setSearchTime(Calendar.getInstance().getTimeInMillis());
         searchHistoryVO.setContent(search.searchKeyWorlds);
         Observable.fromAction(new Action() {
             @Override

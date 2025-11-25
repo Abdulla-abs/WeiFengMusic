@@ -29,13 +29,12 @@ public class SearchHistoryRepository {
         this.searchHistoryDao = searchHistoryDao;
     }
 
-
     public Observable<List<SearchHistoryVO>> observableSearchHistory() {
-        return searchHistoryDao.observerSearchHistory();
+        return searchHistoryDao.observerSearchHistory(10);
     }
 
     public Single<List<SearchHistoryVO>> querySearchHistory() {
-        return searchHistoryDao.querySearchHistory();
+        return searchHistoryDao.querySearchHistory(10);
     }
 
     public void storeSearchHistory(SearchHistoryVO searchHistoryVO) {

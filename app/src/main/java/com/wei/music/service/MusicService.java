@@ -38,6 +38,7 @@ import com.wei.music.MusicSessionManager;
 import com.wei.music.R;
 import com.wei.music.repository.MusicListRepository;
 import com.wei.music.service.musicaction.MusicActionContract;
+import com.wei.music.service.musicaction.MusicIntentContract;
 import com.wei.music.service.playmode.RepeatMode;
 import com.wei.music.service.playmode.ShuffleMode;
 import com.wei.music.utils.MMKVUtils;
@@ -190,6 +191,17 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
                     queueDatasetChangePlay(changePlayQueue.getReplace(), changePlayQueue.getStartIndex());
                 } else if (musicActionContract instanceof MusicActionContract.OnSkipToPosition) {
                     currentIndex = ((MusicActionContract.OnSkipToPosition) musicActionContract).getNewPosition();
+                    startPlay();
+                } else if (musicActionContract instanceof MusicActionContract.Insert) {
+                    MusicActionContract.Insert insertAction = (MusicActionContract.Insert) musicActionContract;
+                    if (originQueues.isEmpty() || currentIndex == 0 || currentIndex == originQueues.size() - 1) {
+                        originQueues.add(insertAction.insert);
+                        currentQueue.add(insertAction.insert);
+                    } else {
+                        originQueues.add(currentIndex + 1, insertAction.insert);
+                        currentQueue.add(currentIndex + 1, insertAction.insert);
+                        ++currentIndex;
+                    }
                     startPlay();
                 }
             }

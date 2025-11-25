@@ -36,6 +36,14 @@ public interface MusicActionContract {
         }
     }
 
+    class Insert implements MusicActionContract{
+        public final MediaSessionCompat.QueueItem insert;
+
+        public Insert(MediaSessionCompat.QueueItem insert) {
+            this.insert = insert;
+        }
+    }
+
     class Previous implements MusicActionContract {
 
     }

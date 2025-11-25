@@ -1,39 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:padding="@dimen/view_margin_14dp">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-        <EditText
-            android:id="@+id/search_edittext"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:layout_weight="1"
-            android:background="@drawable/round_bg"
-            android:hint="@string/search_something"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:textSize="@dimen/msg_text_size" />
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="@dimen/view_margin_14dp">
 
-        <ImageView
-            android:id="@+id/search"
-            android:layout_width="@dimen/image_but_size"
-            android:layout_height="@dimen/image_but_size"
-            android:layout_marginLeft="@dimen/view_margin_14dp"
-            android:src="@drawable/ic_search" />
+            <EditText
+                android:id="@+id/search_edittext"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:background="@drawable/round_bg"
+                android:hint="@string/search_something"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:textSize="@dimen/msg_text_size" />
+
+            <ImageView
+                android:id="@+id/search"
+                android:layout_width="@dimen/image_but_size"
+                android:layout_height="@dimen/image_but_size"
+                android:layout_marginLeft="@dimen/view_margin_14dp"
+                android:src="@drawable/ic_search" />
+
+        </LinearLayout>
+
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/viewpager"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
 
     </LinearLayout>
 
-    <androidx.viewpager2.widget.ViewPager2
-        android:id="@+id/viewpager"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+    <include
+        android:id="@+id/play_bar"
+        layout="@layout/layout_playbar" />
 
-</LinearLayout>
+</FrameLayout>

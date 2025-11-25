@@ -46,7 +46,7 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager {
     }
 
     //每个item的定义
-    public class Item {
+    public static class Item {
         int useHeight;
         View view;
 
@@ -64,7 +64,7 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager {
     }
 
     //行信息的定义
-    public class Row {
+    public static class Row {
         public void setCuTop(float cuTop) {
             this.cuTop = cuTop;
         }

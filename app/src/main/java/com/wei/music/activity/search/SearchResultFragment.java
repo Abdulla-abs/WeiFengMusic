@@ -15,12 +15,18 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import com.wei.music.MusicSessionManager;
 import com.wei.music.R;
 import com.wei.music.bean.SearchResultDTO;
 import com.wei.music.databinding.FragmentSearchResultBinding;
+import com.wei.music.mapper.SongsDTOMapper;
+import com.wei.music.service.musicaction.MusicIntentContract;
 import com.wei.music.utils.Resource;
 
+import java.util.Collections;
 import java.util.Objects;
+
+import javax.inject.Inject;
 
 import dagger.hilt.android.AndroidEntryPoint;
 
@@ -76,6 +82,8 @@ public class SearchResultFragment extends Fragment {
 
     private SearchViewModel searchViewModel;
     private SearchResultViewModel searchResultViewModel;
+    @Inject
+    MusicSessionManager musicSessionManager;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
@@ -110,6 +118,16 @@ public class SearchResultFragment extends Fragment {
                 return Objects.equals(oldItem.getStatus(), newItem.getStatus());
             }
         });
+        searchResultAdapter.setOnClickListener(new SearchResultAdapter.OnClickListener() {
+            @Override
+            public void onItemClick(SearchResultDTO.ResultDTO.SongsDTO songsDTO) {
+                musicSessionManager.onMusicIntent(
+                        new MusicIntentContract.InsertMusicAndPlay(
+                                SongsDTOMapper.mapper(songsDTO)
+                        )
+                );
+            }
+        });
         binding.recyclerView.setAdapter(searchResultAdapter);
     }
 
@@ -134,6 +152,7 @@ public class SearchResultFragment extends Fragment {
                     binding.recyclerView.setVisibility(View.GONE);
                     binding.progressbar.setVisibility(View.VISIBLE);
                 } else if (resultDTOResource instanceof Resource.Error) {
+                    searchResultAdapter.submitList(Collections.emptyList());
                     binding.recyclerView.setVisibility(View.VISIBLE);
                     binding.progressbar.setVisibility(View.GONE);
                     Toast.makeText(requireActivity(), resultDTOResource.getMessage(), Toast.LENGTH_SHORT).show();

@@ -55,6 +55,7 @@ import com.wei.music.mapper.MediaMetadataInfo;
 import com.wei.music.mapper.MediaMetadataMapper;
 import com.wei.music.service.musicaction.MusicActionContract;
 import com.wei.music.service.musicaction.MusicIntentContract;
+import com.wei.music.utils.AudioFileFetcher;
 import com.wei.music.utils.GlideLoadUtils;
 import com.wei.music.utils.Resource;
 import com.wei.music.utils.ToolUtil;
@@ -191,49 +192,23 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
         }
     };
 
-    public void resetSongListBackground() {
-        Optional.ofNullable(playlistDTO)
-                .map(new Function<PlaylistDTO, CreatorDTO>() {
-                    @Override
-                    public CreatorDTO apply(PlaylistDTO playlistDTO) {
-                        return playlistDTO.getCreator();
-                    }
-                })
-                .ifPresent(new Consumer<CreatorDTO>() {
-                    @Override
-                    public void accept(CreatorDTO creatorDTO) {
-                        GlideLoadUtils.loadBitmap(
-                                MusicListActivity.this,
-                                creatorDTO.getBackgroundUrl(),
-                                1,  // radiusDp = 0（不需要圆角）
-                                300, // blurRadius = 300（高斯模糊强度）
-                                new CustomTarget<Bitmap>() {
-
-                                    @Override
-                                    public void onResourceReady(@NonNull Bitmap resource,
-                                                                @Nullable Transition<? super Bitmap> transition) {
-                                        colors = ColorUtil.getColor(resource);
-                                        mMusicListBackground.setImageBitmap(resource);
-                                        mMusicListName.setTextColor(colors[1]);
-                                        mMusicListMsg.setTextColor(colors[1]);
-                                        ToolUtil.setStatusBarTextColor(MusicListActivity.this, colors[0]);
-                                    }
-
-                                    @Override
-                                    public void onLoadCleared(@Nullable Drawable placeholder) {
-
-                                    }
-                                }
-                        );
-                    }
-                });
-    }
 
     private void initData() {
         playlistDTO = GsonUtils.fromJson(getIntent().getStringExtra(INTENT_SONG_LIST),
                 PlaylistDTO.class);
 
         viewModel.fetchPlayListDetail(playlistDTO);
+
+        Optional.ofNullable(playlistDTO)
+                .ifPresent(new Consumer<PlaylistDTO>() {
+                    @Override
+                    public void accept(PlaylistDTO playlistDTO) {
+                        if (playlistDTO.getId() == AudioFileFetcher.LOCAL_SONG_LIST_ID) {
+                            //todo 提示用户开启音乐文件权限
+
+                        }
+                    }
+                });
 
         viewModel.playListDetail.observe(this, new Observer<Resource<UserMusicListBean.PlayList>>() {
             @Override
@@ -251,6 +226,7 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
         musicListAdapter.OnClickListener(MusicListActivity.this);
         mRecyclerView.setAdapter(musicListAdapter);
     }
+
 
     private void onMusicMetaDataChange(MediaMetadataCompat metadata) {
         if (metadata == null) return;
@@ -289,6 +265,44 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
         resetSongListBackground();
     }
 
+    public void resetSongListBackground() {
+        Optional.ofNullable(playlistDTO)
+                .map(new Function<PlaylistDTO, CreatorDTO>() {
+                    @Override
+                    public CreatorDTO apply(PlaylistDTO playlistDTO) {
+                        return playlistDTO.getCreator();
+                    }
+                })
+                .ifPresent(new Consumer<CreatorDTO>() {
+                    @Override
+                    public void accept(CreatorDTO creatorDTO) {
+                        GlideLoadUtils.loadBitmap(
+                                MusicListActivity.this,
+                                creatorDTO.getBackgroundUrl(),
+                                1,  // radiusDp = 0（不需要圆角）
+                                300, // blurRadius = 300（高斯模糊强度）
+                                new CustomTarget<Bitmap>() {
+
+                                    @Override
+                                    public void onResourceReady(@NonNull Bitmap resource,
+                                                                @Nullable Transition<? super Bitmap> transition) {
+                                        colors = ColorUtil.getColor(resource);
+                                        mMusicListBackground.setImageBitmap(resource);
+                                        mMusicListName.setTextColor(colors[1]);
+                                        mMusicListMsg.setTextColor(colors[1]);
+                                        ToolUtil.setStatusBarTextColor(MusicListActivity.this, colors[0]);
+                                    }
+
+                                    @Override
+                                    public void onLoadCleared(@Nullable Drawable placeholder) {
+
+                                    }
+                                }
+                        );
+                    }
+                });
+    }
+
 
     @Override
     public void onClick(View v) {
@@ -316,8 +330,7 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
 
         PlaybackStateCompat playbackState = mMediaController.getPlaybackState();
         musicSessionManager.onMusicIntent(
-                new MusicIntentContract.ChangePlayListOrSkipToPosition(queueItems, position),
-                playbackState
+                new MusicIntentContract.ChangePlayListOrSkipToPosition(queueItems, position, playbackState)
         );
     }
 

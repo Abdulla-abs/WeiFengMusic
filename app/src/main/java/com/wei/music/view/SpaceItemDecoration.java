@@ -43,7 +43,7 @@ public class SpaceItemDecoration extends RecyclerView.ItemDecoration {
         int position = parent.getChildAdapterPosition(view);
         int itemCount;
 
-        RecyclerView.Adapter adapter = parent.getAdapter();
+        RecyclerView.Adapter<?> adapter = parent.getAdapter();
         if (adapter == null){
             itemCount = 0;
         }else {
@@ -51,8 +51,8 @@ public class SpaceItemDecoration extends RecyclerView.ItemDecoration {
         }
 
         outRect.top = top;
-        outRect.left = position == 0 ? 0 : left;  // 第一个item left=0
-        outRect.right = position == itemCount - 1 ? 0 : right;  // 最后一个item right=0
+        outRect.left = left;
+        outRect.right = right;
         outRect.bottom = bottom;
     }
 
