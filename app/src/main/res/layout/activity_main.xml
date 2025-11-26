@@ -27,6 +27,7 @@
                 android:fitsSystemWindows="true">
 
                 <include
+                    android:id="@+id/toolbar"
                     layout="@layout/layout_toolbar"/>
 
                 <androidx.viewpager2.widget.ViewPager2
@@ -38,6 +39,7 @@
             </LinearLayout>
 
             <include
+                android:id="@+id/play_bar"
                 layout="@layout/layout_playbar"/>
 
         </androidx.cardview.widget.CardView>

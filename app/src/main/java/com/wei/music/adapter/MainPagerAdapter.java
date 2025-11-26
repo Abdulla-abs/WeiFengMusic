@@ -8,7 +8,7 @@ import java.util.List;
 
 public class MainPagerAdapter extends FragmentStateAdapter {
 
-    private List<Fragment> mFragments;
+    private final List<Fragment> mFragments;
 
     public MainPagerAdapter(@NonNull FragmentActivity fragmentActivity, List<Fragment> fragments) {
         super(fragmentActivity);
@@ -30,5 +30,7 @@ public class MainPagerAdapter extends FragmentStateAdapter {
     public int getItemCount() {
         return mFragments.size();
     }
+
+
 }
 

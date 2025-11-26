@@ -31,6 +31,7 @@
                 android:id="@+id/search"
                 android:layout_width="@dimen/image_but_size"
                 android:layout_height="@dimen/image_but_size"
+                android:transitionName="search"
                 android:layout_marginLeft="@dimen/view_margin_14dp"
                 android:src="@drawable/ic_search" />
 

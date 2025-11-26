@@ -26,6 +26,9 @@ public class AppSessionManager {
     public AppSessionManager() {
     }
 
+    /**
+     * 初始化账号信息
+     */
     public void init() {
         Disposable subscribe = userRepository.getCurrentUser()
                 .subscribe(new Consumer<Resource<UserLoginBean>>() {

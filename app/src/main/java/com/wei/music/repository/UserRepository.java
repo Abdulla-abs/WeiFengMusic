@@ -3,6 +3,7 @@ package com.wei.music.repository;
 import androidx.room.rxjava3.EmptyResultSetException;
 
 import com.wei.music.bean.BaseResp;
+import com.wei.music.bean.ProfileDTO;
 import com.wei.music.bean.UserLoginBean;
 import com.wei.music.database.dao.UserDao;
 import com.wei.music.network.LoginApi;
@@ -61,7 +62,7 @@ public class UserRepository {
                     @Override
                     public Resource<UserLoginBean> apply(Throwable throwable) throws Throwable {
                         //未登录状态下room空数据情况下将会返回此异常。我们忽略此异常
-                        if (throwable instanceof EmptyResultSetException){
+                        if (throwable instanceof EmptyResultSetException) {
                             return new Resource.Empty<>();
                         }
                         return new Resource.Error<>(throwable.getMessage());

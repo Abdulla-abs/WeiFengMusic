@@ -22,22 +22,19 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.blankj.utilcode.util.GsonUtils;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
-import com.wei.music.AppSessionManager;
-import com.wei.music.MusicSessionManager;
 import com.wei.music.R;
 import com.wei.music.activity.musiclist.MusicListActivity;
 import com.wei.music.adapter.MyRecycleAdapter;
 import com.wei.music.bean.PlaylistDTO;
+import com.wei.music.bean.ProfileDTO;
 import com.wei.music.bean.UserLoginBean;
 import com.wei.music.databinding.HomeFragmentBinding;
 import com.wei.music.databinding.LayoutLoginCaptchaBinding;
 import com.wei.music.utils.Resource;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
-import javax.inject.Inject;
+import java.util.function.Function;
 
 import dagger.hilt.android.AndroidEntryPoint;
 
@@ -47,7 +44,7 @@ public class HomeFragment extends Fragment {
 
     private HomeViewModel homeViewModel;
     private ProgressDialog progressDialog;
-    private com.wei.music.databinding.HomeFragmentBinding binding;
+    private HomeFragmentBinding binding;
     private MyRecycleAdapter mSongListAdapter;
     private BottomSheetDialog mLoginDialog;
 
@@ -76,6 +73,13 @@ public class HomeFragment extends Fragment {
             @Override
             public void onUserCardClick(UserLoginBean user) {
                 Optional.ofNullable(user)
+                        .map(new Function<UserLoginBean, UserLoginBean>() {
+                            @Override
+                            public UserLoginBean apply(UserLoginBean userLoginBean) {
+                                if (userLoginBean.getProfile().getUserId() == 0) return null;
+                                return userLoginBean;
+                            }
+                        })
                         .ifPresentOrElse(new java.util.function.Consumer<UserLoginBean>() {
                             @Override
                             public void accept(UserLoginBean userLoginBean) {
@@ -92,14 +96,15 @@ public class HomeFragment extends Fragment {
             @Override
             public void onSongListClick(PlaylistDTO data, View image, View title, View msg) {
                 //MMKVUtils.saveCurrentSongList(data);
-                View playBar = requireActivity().findViewById(R.id.playbar_view);
+//                View playBar = requireActivity().findViewById(R.id.playbar_view);
                 Intent intent = new Intent(getActivity(), MusicListActivity.class);
                 Bundle bundle = ActivityOptionsCompat.makeSceneTransitionAnimation(
                         requireActivity(),
                         Pair.create(image, "song_image"),
                         Pair.create(title, "song_title"),
-                        Pair.create(msg, "song_msg"),
-                        Pair.create(playBar, "song_playbar")).toBundle();
+                        Pair.create(msg, "song_msg")
+//                        Pair.create(playBar, "song_playbar")
+                ).toBundle();
                 intent.putExtra(MusicListActivity.INTENT_SONG_LIST, GsonUtils.toJson(data));
                 startActivity(intent, bundle);
             }
@@ -158,6 +163,12 @@ public class HomeFragment extends Fragment {
                 } else if (userLoginBeanResource instanceof Resource.Error) {
                     Toast.makeText(requireContext(), userLoginBeanResource.getMessage(), Toast.LENGTH_SHORT).show();
                     progressDialog.dismiss();
+                } else if (userLoginBeanResource instanceof Resource.Empty) {
+                    UserLoginBean emptyUser = new UserLoginBean();
+                    ProfileDTO profileDTO = new ProfileDTO();
+                    profileDTO.setNickname("登录查看收藏的歌单");
+                    emptyUser.setProfile(profileDTO);
+                    initUser(emptyUser);
                 }
             }
         });
@@ -170,6 +181,7 @@ public class HomeFragment extends Fragment {
     public void login() {
         LayoutLoginCaptchaBinding loginCaptchaBinding = LayoutLoginCaptchaBinding.inflate(LayoutInflater.from(requireContext()), null, false);
         mLoginDialog = new BottomSheetDialog(requireContext(), R.style.BottomSheetDialogStyle);
+
         mLoginDialog.setContentView(loginCaptchaBinding.getRoot());
 
         loginCaptchaBinding.btRequestCaptcha.setOnClickListener(new OnClickListener() {
@@ -191,18 +203,6 @@ public class HomeFragment extends Fragment {
         mLoginDialog.show();
     }
 
-    private void showLoginResult(String title, String msg) {
-        new AlertDialog.Builder(requireContext())
-                .setTitle(title)
-                .setMessage(msg)
-                .setNegativeButton("OK", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        dialog.dismiss();
-                    }
-                })
-                .create()
-                .show();
-    }
+
 
 }

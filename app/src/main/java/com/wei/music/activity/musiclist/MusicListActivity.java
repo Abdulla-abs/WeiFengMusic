@@ -1,11 +1,16 @@
 package com.wei.music.activity.musiclist;
 
+import android.Manifest;
+import android.app.AlertDialog;
 import android.content.ComponentName;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.support.v4.media.MediaBrowserCompat;
@@ -21,7 +26,10 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
@@ -67,6 +75,7 @@ import com.wei.music.utils.AppBarStateChangeListener;
 import javax.inject.Inject;
 
 import dagger.hilt.android.AndroidEntryPoint;
+import io.reactivex.rxjava3.disposables.Disposable;
 
 
 @AndroidEntryPoint
@@ -91,6 +100,7 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
     @Inject
     MusicSessionManager musicSessionManager;
     private PlaylistDTO playlistDTO;
+    private final int PERMISSION_REQUEST_CODE = 0X21475457;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -199,16 +209,14 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
 
         viewModel.fetchPlayListDetail(playlistDTO);
 
-        Optional.ofNullable(playlistDTO)
-                .ifPresent(new Consumer<PlaylistDTO>() {
-                    @Override
-                    public void accept(PlaylistDTO playlistDTO) {
-                        if (playlistDTO.getId() == AudioFileFetcher.LOCAL_SONG_LIST_ID) {
-                            //todo 提示用户开启音乐文件权限
+        if (playlistDTO != null && playlistDTO.getId() == AudioFileFetcher.LOCAL_SONG_LIST_ID &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            int result = ContextCompat.checkSelfPermission(MusicListActivity.this, Manifest.permission.READ_MEDIA_AUDIO);
+            if (result != PackageManager.PERMISSION_GRANTED) {
+                requestAudioPermission();
+            }
+        }
 
-                        }
-                    }
-                });
 
         viewModel.playListDetail.observe(this, new Observer<Resource<UserMusicListBean.PlayList>>() {
             @Override
@@ -332,6 +340,47 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
         musicSessionManager.onMusicIntent(
                 new MusicIntentContract.ChangePlayListOrSkipToPosition(queueItems, position, playbackState)
         );
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Disposable subscribe = musicSessionManager.loadLocalSongList()
+                        .subscribe(new io.reactivex.rxjava3.functions.Consumer<List<PlaylistDTO>>() {
+                            @Override
+                            public void accept(List<PlaylistDTO> unused) throws Throwable {
+                                if (!unused.isEmpty()){
+                                    viewModel.fetchPlayListDetail(playlistDTO);
+                                }
+                            }
+                        });
+            }
+        }
+    }
+
+    private void requestAudioPermission() {
+        new AlertDialog.Builder(this)
+                .setTitle("提示")
+                .setMessage("获取您的音乐资源权限后将显示本机的音乐")
+                .setPositiveButton("授予权限", new DialogInterface.OnClickListener() {
+                    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        ActivityCompat.requestPermissions(MusicListActivity.this,
+                                new String[]{Manifest.permission.READ_MEDIA_AUDIO, Manifest.permission.READ_EXTERNAL_STORAGE},
+                                PERMISSION_REQUEST_CODE);
+                    }
+                })
+                .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .create()
+                .show();
     }
 
     @Override

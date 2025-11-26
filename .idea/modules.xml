@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/微风音乐.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/微风音乐.app.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/myutil/微风音乐.myutil.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/myutil/微风音乐.myutil.androidTest.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/myutil/微风音乐.myutil.main.iml" filepath="$PROJECT_DIR$/.idea/modules/myutil/微风音乐.myutil.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/myutil/微风音乐.myutil.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/myutil/微风音乐.myutil.unitTest.iml" />

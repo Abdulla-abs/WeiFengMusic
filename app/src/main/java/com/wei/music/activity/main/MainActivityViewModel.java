@@ -1,14 +1,15 @@
 package com.wei.music.activity.main;
 
+import androidx.lifecycle.ViewModel;
+
 import com.wei.music.AppSessionManager;
-import com.wei.music.utils.ViewModelScopeProviderUtil;
 
 import javax.inject.Inject;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
 
 @HiltViewModel
-public class MainActivityViewModel extends ViewModelScopeProviderUtil.ScopedViewModel {
+public class MainActivityViewModel extends ViewModel {
 
     private final AppSessionManager appSessionManager;
 

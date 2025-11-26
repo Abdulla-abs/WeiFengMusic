@@ -4,6 +4,7 @@ import android.support.v4.media.session.MediaSessionCompat;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.ViewModel;
 
 import com.wei.music.bean.PlaylistDTO;
 import com.wei.music.bean.UserMusicListBean;
@@ -11,7 +12,6 @@ import com.wei.music.mapper.PlayListMapper;
 import com.wei.music.repository.MusicListRepository;
 import com.wei.music.service.wrapper.TypeWrapper;
 import com.wei.music.utils.Resource;
-import com.wei.music.utils.ViewModelScopeProviderUtil;
 
 import java.util.Collections;
 import java.util.List;
@@ -23,7 +23,7 @@ import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.functions.Consumer;
 
 @HiltViewModel
-public class MusicListViewModel extends ViewModelScopeProviderUtil.ScopedViewModel {
+public class MusicListViewModel extends ViewModel {
 
     private final MusicListRepository repository;
 
