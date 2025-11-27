@@ -24,13 +24,12 @@ import javax.inject.Singleton;
 import abbas.fun.myutil.Witch;
 import io.reactivex.rxjava3.annotations.NonNull;
 import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.core.Scheduler;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.functions.BiFunction;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 
 @Singleton
-public class MusicListRepository {
+public class MusicRepository {
 
     private final MusicDataSource localMusicDataSource;
     private final MusicDataSource remoteMusicDataSource;
@@ -39,10 +38,10 @@ public class MusicListRepository {
     private final Function<Long, SongType> songTypeCase;
 
     @Inject
-    public MusicListRepository(@LocalMusicDataSource MusicDataSource localMusicDataSource,
-                               @RemoteMusicDataSource MusicDataSource remoteMusicDataSource,
-                               UserSubCountDao subCountDao,
-                               Function<Long, SongType> songTypeCase) {
+    public MusicRepository(@LocalMusicDataSource MusicDataSource localMusicDataSource,
+                           @RemoteMusicDataSource MusicDataSource remoteMusicDataSource,
+                           UserSubCountDao subCountDao,
+                           Function<Long, SongType> songTypeCase) {
         this.localMusicDataSource = localMusicDataSource;
         this.remoteMusicDataSource = remoteMusicDataSource;
         this.subCountDao = subCountDao;
@@ -148,5 +147,13 @@ public class MusicListRepository {
                         return new Resource.Error<>(throwable.getMessage());
                     }
                 });
+    }
+
+    public Single<Boolean> changeMusicLikeState(int musicType, int musicId,boolean like){
+        return Witch.<Integer, MusicDataSource>of(musicType)
+                .with(SongType.LOCAL.type, localMusicDataSource)
+                .with(SongType.REMOTE.type, remoteMusicDataSource)
+                .witchOne()
+                .changeMusicLikeState(like,musicId);
     }
 }

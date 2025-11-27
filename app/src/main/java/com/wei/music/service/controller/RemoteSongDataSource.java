@@ -85,20 +85,13 @@ public class RemoteSongDataSource extends MusicDataSource {
 
     @Override
     public Single<Boolean> changeMusicLikeState(boolean like, int id) {
-//        return nestedApi
-//                .likeMusic(like, id)
-//                .subscribeOn(Schedulers.io())
-//                .map(new Function<BaseResp<String>, Boolean>() {
-//                    @Override
-//                    public Boolean apply(BaseResp<String> stringBaseResp) throws Throwable {
-//                        if (stringBaseResp.success() && stringBaseResp.getData().contains("200")) {
-//                            return Boolean.TRUE;
-//                        } else {
-//                            return Boolean.FALSE;
-//                        }
-//                    }
-//                });
-        return Single.never();
+        return nestedApi.likeMusic(like, id).subscribeOn(Schedulers.io())
+                .map(new Function<BaseResp<Object>, Boolean>() {
+                    @Override
+                    public Boolean apply(BaseResp<Object> objectBaseResp) throws Throwable {
+                        return objectBaseResp.success();
+                    }
+                });
     }
 
     @Override

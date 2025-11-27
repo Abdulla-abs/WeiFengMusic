@@ -60,9 +60,6 @@ public class PlayerVisualizerFragment extends Fragment implements PlayerActivity
         DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
         int widthPixels = Math.min(displayMetrics.widthPixels, displayMetrics.heightPixels);
         mVisualizer = mRootView.findViewById(R.id.player_visualizer);
-//        if (ToolUtil.readInt("AudioId") != -1) {
-//            mVisualizer.setAudioSessionId(ToolUtil.readInt("AudioId"));
-//        }
         mVisualizer.setAudioSessionId(MusicService.FIXED_AUDIO_SESSION_ID);
         mPlayerImage = mRootView.findViewById(R.id.player_image);
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) mPlayerImage.getLayoutParams();

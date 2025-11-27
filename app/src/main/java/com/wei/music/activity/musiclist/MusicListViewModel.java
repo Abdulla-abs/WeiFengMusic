@@ -9,7 +9,7 @@ import androidx.lifecycle.ViewModel;
 import com.wei.music.bean.PlaylistDTO;
 import com.wei.music.bean.UserMusicListBean;
 import com.wei.music.mapper.PlayListMapper;
-import com.wei.music.repository.MusicListRepository;
+import com.wei.music.repository.MusicRepository;
 import com.wei.music.service.wrapper.TypeWrapper;
 import com.wei.music.utils.Resource;
 
@@ -25,7 +25,7 @@ import io.reactivex.rxjava3.functions.Consumer;
 @HiltViewModel
 public class MusicListViewModel extends ViewModel {
 
-    private final MusicListRepository repository;
+    private final MusicRepository repository;
 
     private final MutableLiveData<Resource<UserMusicListBean.PlayList>> _playListDetail
             = new MutableLiveData<>(new Resource.Empty<>());
@@ -37,7 +37,7 @@ public class MusicListViewModel extends ViewModel {
 
 
     @Inject
-    public MusicListViewModel(MusicListRepository repository) {
+    public MusicListViewModel(MusicRepository repository) {
         this.repository = repository;
     }
 

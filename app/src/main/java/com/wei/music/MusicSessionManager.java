@@ -7,7 +7,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.wei.music.bean.PlaylistDTO;
-import com.wei.music.repository.MusicListRepository;
+import com.wei.music.repository.MusicRepository;
 import com.wei.music.service.MusicService;
 import com.wei.music.service.musicaction.MusicActionContract;
 import com.wei.music.service.musicaction.MusicIntentContract;
@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -36,13 +35,13 @@ public class MusicSessionManager {
 
     public final MutableLiveData<MusicActionContract> action = new MutableLiveData<>();
     private final MutableLiveData<MusicIntentContract> intent = new MutableLiveData<>();
-    private final MusicListRepository musicListRepository;
+    private final MusicRepository musicRepository;
 
     private List<MediaSessionCompat.QueueItem> currentList = Collections.emptyList();
 
     @Inject
-    public MusicSessionManager(MusicListRepository musicListRepository) {
-        this.musicListRepository = musicListRepository;
+    public MusicSessionManager(MusicRepository musicRepository) {
+        this.musicRepository = musicRepository;
     }
 
     public void onMusicIntent(MusicIntentContract intent) {
@@ -72,7 +71,7 @@ public class MusicSessionManager {
     }
 
     public Observable<List<PlaylistDTO>> loadDatabaseSongList() {
-        return musicListRepository.loadDatabaseSongList()
+        return musicRepository.loadDatabaseSongList()
                 .map(new Function<List<PlaylistDTO>, List<PlaylistDTO>>() {
                     @Override
                     public List<PlaylistDTO> apply(List<PlaylistDTO> playlistDTOS) throws Throwable {
@@ -103,11 +102,11 @@ public class MusicSessionManager {
     }
 
     public Single<List<PlaylistDTO>> loadLocalSongList() {
-        return musicListRepository.fetchLocalSongList();
+        return musicRepository.fetchLocalSongList();
     }
 
     public void refreshSongListWithUser(int userId) {
-        musicListRepository.fetchAllSongList(userId)
+        musicRepository.fetchAllSongList(userId)
                 .subscribe();
     }
 }

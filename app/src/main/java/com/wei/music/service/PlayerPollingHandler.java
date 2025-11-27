@@ -11,6 +11,8 @@ import androidx.annotation.NonNull;
 
 /**
  * replace of {@link SeekBarThread}
+ *
+ * 相对与线程sleep的 busy way 方式，handler相对来说更好
  */
 public class PlayerPollingHandler extends Handler {
 

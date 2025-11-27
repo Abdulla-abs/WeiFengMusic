@@ -113,39 +113,11 @@ public class LocalSongDataSource extends MusicDataSource {
         defaultLocalPlayList.setTrackCount(trackList.size());
         defaultLocalPlayListDetail.setTracks(trackList);
         return Single.just(TypeWrapper.local(defaultLocalPlayListDetail));
-
-//        List<MediaSessionCompat.QueueItem> musicList = new ArrayList<>();
-//        for (int i = 0; i < localAudioFilesValue.size(); i++) {
-//            MediaMetadataCompat metadata = new MediaMetadataCompat.Builder()
-//                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, localAudioFilesValue.get(i).getName())//歌名
-//                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, localAudioFilesValue.get(i).getArtist())//歌手
-//                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, localAudioFilesValue.get(i).getAlbum())//歌曲封面
-//                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, localAudioFilesValue.get(i).getId() + "")//歌曲id
-//                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, localAudioFilesValue.get(i).getPath())
-//                    .build();
-//
-//            MediaDescriptionCompat desc = metadata.getDescription();
-//
-//            Bundle extras = new Bundle();
-//            extras.putInt(MusicService.MSCQIMusicType, SongType.LOCAL.type);  // 关键在这里
-//
-//            MediaDescriptionCompat finalDesc = new MediaDescriptionCompat.Builder()
-//                    .setMediaId(desc.getMediaId())
-//                    .setTitle(desc.getTitle())
-//                    .setSubtitle(desc.getSubtitle())
-//                    .setIconUri(desc.getIconUri())
-//                    .setDescription(desc.getDescription())
-//                    .setExtras(extras)  // 手动设置
-//                    .build();
-//
-//            musicList.add(new MediaSessionCompat.QueueItem(finalDesc, i));
-//        }
-//        return Single.just(musicList);
     }
 
     @Override
     public Single<Boolean> changeMusicLikeState(boolean like, int id) {
-        return Single.just(Boolean.TRUE);
+        return Single.just(Boolean.FALSE);
     }
 
     @Override

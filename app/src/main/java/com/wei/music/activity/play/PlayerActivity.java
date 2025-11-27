@@ -226,7 +226,7 @@ public class PlayerActivity extends AppCompatActivity implements View.OnClickLis
     public void onClick(View view) {
         int viewId = view.getId();
         if (viewId == R.id.player_like) {
-            //TODO 未实现
+
 //            if (isLike) {
 //                mPlayerLike.setImageDrawable(getResources().getDrawable(R.drawable.ic_heart_outline));
 //                isLike = false;

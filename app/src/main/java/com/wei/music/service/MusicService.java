@@ -36,9 +36,8 @@ import com.bumptech.glide.request.target.CustomTarget;
 import com.bumptech.glide.request.transition.Transition;
 import com.wei.music.MusicSessionManager;
 import com.wei.music.R;
-import com.wei.music.repository.MusicListRepository;
+import com.wei.music.repository.MusicRepository;
 import com.wei.music.service.musicaction.MusicActionContract;
-import com.wei.music.service.musicaction.MusicIntentContract;
 import com.wei.music.service.playmode.RepeatMode;
 import com.wei.music.service.playmode.ShuffleMode;
 import com.wei.music.utils.MMKVUtils;
@@ -106,7 +105,7 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
     @Inject
     MusicSessionManager musicSessionManager;
     @Inject
-    MusicListRepository musicListRepository;
+    MusicRepository musicRepository;
 
     @Override
     public void onCreate() {
@@ -259,7 +258,7 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
             snapshot.setMusicType(musicType);
 
             String mediaId = currentQueue.get(currentIndex).getDescription().getMediaId();
-            Disposable subscribe = musicListRepository.fetchSongUrl(musicType, mediaId)
+            Disposable subscribe = musicRepository.fetchSongUrl(musicType, mediaId)
                     .subscribe(new io.reactivex.rxjava3.functions.Consumer<Resource<Uri>>() {
                         @Override
                         public void accept(Resource<Uri> uriResource) throws Throwable {

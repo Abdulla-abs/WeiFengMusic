@@ -39,7 +39,7 @@ public interface NestedApi {
     Single<Response<MusicUrlDTO>> getMusicUrl(@Query("id") Long musicId);
 
     @GET("/like")
-    Single<BaseResp<String>> likeMusic(boolean like, int id);
+    Single<BaseResp<Object>> likeMusic(@Query("like")Boolean like,@Query("id") int id);
 
     /**
      * @param keywords keywords : 关键词
