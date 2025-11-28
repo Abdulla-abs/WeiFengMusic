@@ -40,7 +40,7 @@ public class NotifyHelper {
     
     public Notification createForeNotification(String channel_id, RemoteViews remoteViews){
         Intent intent=new Intent(mContext, MainActivity.class);
-        PendingIntent mainIntent=PendingIntent.getActivity(mContext,0,intent,0);
+        PendingIntent mainIntent=PendingIntent.getActivity(mContext,0,intent,PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         NotificationCompat.Builder builder=new NotificationCompat.Builder(mContext,channel_id)
             .setSmallIcon(R.drawable.ic_more)
             .setStyle(new NotificationCompat.DecoratedCustomViewStyle()) 

@@ -14,7 +14,7 @@ Elegant · Material You · 零广告 · 完全开源
 
 | 主界面 (竖屏)                          | 播放页 (横屏)                          | 歌词页 & 动态主题                      |
 |----------------------------------------|----------------------------------------|----------------------------------------|
-| <img src="" width="260"/> | <img src="" width="480"/> | <img src="" width="260"/> |
+| <img src="https://github.com/Abdulla-abs/WeiFengMusic/blob/master/screenshots/main_page_signed.jpg" width="260"/> | <img src="https://github.com/Abdulla-abs/WeiFengMusic/blob/master/screenshots/player_main.jpg" width="480"/> | <img src="https://github.com/Abdulla-abs/WeiFengMusic/blob/master/screenshots/player_lrc.jpg" width="260"/> |
 
 <!-- 动图展示（强烈推荐放一个） -->
 
@@ -31,11 +31,11 @@ Elegant · Material You · 零广告 · 完全开源
 
 ## 下载体验
 
-| 方式                 | 链接                                                                                                 | 备注               |
-|----------------------|------------------------------------------------------------------------------------------------------|--------------------|
-| GitHub Release       | https://github.com/你的用户名/你的仓库名/releases/latest                                            | 推荐               |
-| 国内镜像（蓝奏云）   | https://wws.lanzoui.com/b0xxxxxxx                                                                   | 国内秒下           |
-| Telegram 频道        | https://t.me/your_channel                                                                            | 抢先版 & 预览版    |
+| 方式                 | 链接                                             | 备注               |
+|----------------------|------------------------------------------------|--------------------|
+| GitHub Release       | https://github.com/Abdulla-abs/WeiFengMusic/releases/latest | 推荐               |
+| 国内镜像（蓝奏云）   | 暂无                                             | 国内秒下           |
+| Telegram 频道        | 暂无                                             | 抢先版 & 预览版    |
 
 ## 快速开始
 
