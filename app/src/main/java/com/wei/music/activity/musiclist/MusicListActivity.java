@@ -170,6 +170,7 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
             mMediaController = new MediaControllerCompat(MusicListActivity.this, token);
             mMediaController.registerCallback(mMediaCallback);
             onMusicServiceConnected();
+            onMusicMetaDataChange(mMediaController.getMetadata());
         }
     };
 
@@ -239,6 +240,7 @@ public class MusicListActivity extends AppCompatActivity implements View.OnClick
     private void onMusicMetaDataChange(MediaMetadataCompat metadata) {
         if (metadata == null) return;
         MediaMetadataInfo music = MediaMetadataMapper.mapper(metadata);
+        if (music == null) return;
 
         GlideLoadUtils.setCircle(this, music.getAlbum(), mPlayBarIcon);
         mPlayBarTitle.setText(music.getTitle() + "-" + music.getArtist());

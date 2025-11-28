@@ -25,8 +25,8 @@ import retrofit2.converter.gson.GsonConverterFactory;
 @InstallIn(SingletonComponent.class)
 public abstract class NetWorkModule {
 
-    private static final String LOGGING_URL = "https://apis.netstart.cn/music/";
-    private static final String NESTED_BASE_URL = "https://163api.qijieya.cn/";
+    public static final String LOGGING_URL = "https://apis.netstart.cn/music/";
+    public static final String NESTED_BASE_URL = "https://163api.qijieya.cn/";
     public static final String WEI_BASE_URL = "https://netease-cloud-music-api-wei.vercel.app/";
 
     @Provides

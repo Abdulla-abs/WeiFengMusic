@@ -85,7 +85,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
     }
 
     private void initData() {
-        controller.registerControllerCallback(mMediaCallback);
+        controller.registerWhenConnected(mMediaCallback);
     }
 
     private final MediaControllerCompat.Callback mMediaCallback = new MediaControllerCompat.Callback() {
@@ -129,6 +129,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
 
     private void onMetadataChange(MediaMetadataCompat metadata) {
         MediaMetadataInfo info = MediaMetadataMapper.mapper(metadata);
+        if (info == null) return;
 
         GlideLoadUtils.setCircle(this, info.getAlbum(), binding.playBar.playbarIcon);
         binding.playBar.playbarTitle.setText(info.getTitle() + "-" + info.getArtist());
@@ -202,6 +203,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
     //在活动销毁时对服务进行解绑和停止线程
     @Override
     protected void onDestroy() {
+        controller.unregisterControllerCallback(mMediaCallback);
         super.onDestroy();
     }
 

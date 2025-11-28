@@ -6,6 +6,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaControllerCompat;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -27,6 +28,7 @@ import com.wei.music.R;
 import com.wei.music.mapper.MediaMetadataInfo;
 import com.wei.music.mapper.MediaMetadataMapper;
 import com.wei.music.service.MusicService;
+import com.wei.music.service.controller.MusicController;
 import com.wei.music.utils.ColorUtil;
 import com.wei.music.utils.GlideLoadUtils;
 import com.wei.music.utils.ToolUtil;
@@ -37,7 +39,7 @@ import javax.inject.Inject;
 import dagger.hilt.android.AndroidEntryPoint;
 
 @AndroidEntryPoint
-public class PlayerVisualizerFragment extends Fragment implements PlayerActivity.OnVisualizerListener {
+public class PlayerVisualizerFragment extends Fragment {
 
     private View mRootView;
     private VisualizerView mVisualizer;
@@ -45,6 +47,9 @@ public class PlayerVisualizerFragment extends Fragment implements PlayerActivity
     private boolean isVertical;
 
     PlayViewModel playViewModel;
+
+    @Inject
+    MusicController musicController;
 
     @Nullable
     @Override
@@ -54,6 +59,17 @@ public class PlayerVisualizerFragment extends Fragment implements PlayerActivity
         initView();
         initData();
         return mRootView;
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        initMusicController();
+        initMediaMetaData(musicController.getMediaControllerCompat().getMetadata());
+    }
+
+    private void initMusicController() {
+        musicController.registerControllerCallback(callback);
     }
 
     private void initView() {
@@ -74,37 +90,43 @@ public class PlayerVisualizerFragment extends Fragment implements PlayerActivity
 
     private void initData() {
         playViewModel = new ViewModelProvider(this).get(PlayViewModel.class);
-        playViewModel.mediaMetadataCompatMutableLiveData.observe(getViewLifecycleOwner(), new Observer<MediaMetadataCompat>() {
-            @Override
-            public void onChanged(MediaMetadataCompat mediaMetadataCompat) {
-                MediaMetadataInfo music = MediaMetadataMapper.mapper(mediaMetadataCompat);
-
-                onUpImage(music.getAlbum());
-                GlideLoadUtils.loadBitmap(
-                        requireContext(),
-                        music.getAlbum(),
-                        300,   // 高斯模糊强度
-                        new CustomTarget<Bitmap>() {  // ← 改成 CustomTarget
-
-                            @RequiresApi(api = Build.VERSION_CODES.Q)
-                            @Override
-                            public void onResourceReady(@NonNull Bitmap resource,
-                                                        @Nullable Transition<? super Bitmap> transition) {
-                                onUpColor(ColorUtil.getColor(resource)[1]);
-                            }
-
-                            @Override
-                            public void onLoadCleared(@Nullable Drawable placeholder) {
-                                // 可选：资源被清除时执行（比如 Activity destroy）
-                            }
-                        }
-                );
-            }
-        });
 
     }
 
-    @Override
+    private final MediaControllerCompat.Callback callback = new MediaControllerCompat.Callback() {
+        @Override
+        public void onMetadataChanged(MediaMetadataCompat metadata) {
+            super.onMetadataChanged(metadata);
+            initMediaMetaData(metadata);
+        }
+    };
+
+
+    private void initMediaMetaData(MediaMetadataCompat metadata) {
+        MediaMetadataInfo music = MediaMetadataMapper.mapper(metadata);
+        if (music == null) return;
+        onUpImage(music.getAlbum());
+        GlideLoadUtils.loadBitmap(
+                requireContext(),
+                music.getAlbum(),
+                300,   // 高斯模糊强度
+                new CustomTarget<Bitmap>() {  // ← 改成 CustomTarget
+
+                    @RequiresApi(api = Build.VERSION_CODES.Q)
+                    @Override
+                    public void onResourceReady(@NonNull Bitmap resource,
+                                                @Nullable Transition<? super Bitmap> transition) {
+                        onUpColor(ColorUtil.getColor(resource)[1]);
+                    }
+
+                    @Override
+                    public void onLoadCleared(@Nullable Drawable placeholder) {
+                        // 可选：资源被清除时执行（比如 Activity destroy）
+                    }
+                }
+        );
+    }
+
     public void onUpImage(String url) {
         if (isVertical) {
             GlideLoadUtils.setCircle(requireContext(), url, mPlayerImage);
@@ -113,7 +135,6 @@ public class PlayerVisualizerFragment extends Fragment implements PlayerActivity
         }
     }
 
-    @Override
     public void onUpColor(int color) {
         mVisualizer.setLineBarColor(color);
     }
@@ -134,6 +155,7 @@ public class PlayerVisualizerFragment extends Fragment implements PlayerActivity
     public void onDestroy() {
         super.onDestroy();
         mVisualizer.release();
+        musicController.unregisterControllerCallback(callback);
     }
 
 }

@@ -221,6 +221,7 @@ public class MusicService extends MediaBrowserServiceCompat implements ServiceCa
             currentIndex = currentQueue.indexOf(startItem);
         } else {
             currentQueue.addAll(originQueues);
+            currentIndex = startIndex;
         }
 
         startPlay();

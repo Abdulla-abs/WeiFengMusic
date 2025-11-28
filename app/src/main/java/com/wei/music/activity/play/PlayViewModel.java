@@ -6,6 +6,8 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.SavedStateHandle;
 import androidx.lifecycle.ViewModel;
 
+import com.wei.music.mapper.MediaMetadataInfo;
+
 import javax.inject.Inject;
 
 import dagger.hilt.android.lifecycle.HiltViewModel;
@@ -16,9 +18,5 @@ public class PlayViewModel extends ViewModel {
     @Inject
     public PlayViewModel() {
     }
-
-    public final MutableLiveData<MediaMetadataCompat> mediaMetadataCompatMutableLiveData
-            = new MutableLiveData<>();
-
 
 }

@@ -35,10 +35,12 @@ import com.bumptech.glide.request.transition.Transition;
 import com.wei.music.R;
 import com.wei.music.activity.EqualizerActivity;
 import com.wei.music.activity.MusicListDialog;
+import com.wei.music.di.NetWorkModule;
 import com.wei.music.mapper.MediaMetadataInfo;
 import com.wei.music.mapper.MediaMetadataMapper;
 import com.wei.music.service.MusicService;
 import com.wei.music.service.MusicServiceModeHelper;
+import com.wei.music.service.controller.MusicController;
 import com.wei.music.utils.CloudMusicApi;
 import com.wei.music.utils.ColorUtil;
 import com.wei.music.utils.GlideLoadUtils;
@@ -63,6 +65,8 @@ import androidx.fragment.app.FragmentTransaction;
 
 import com.wei.music.view.MarqueeView;
 
+import javax.inject.Inject;
+
 import dagger.hilt.android.AndroidEntryPoint;
 
 @AndroidEntryPoint
@@ -70,7 +74,7 @@ public class PlayerActivity extends AppCompatActivity implements View.OnClickLis
 
     private FrameLayout mLrcFrameLayout, mVisualizerFrameLayout;
     private ViewPager2 mViewPager2;
-    private Fragment mLrcFragment, mVisualizerFragment;
+    //    private Fragment mLrcFragment, mVisualizerFragment;
     private List<Fragment> mPagerFragments = new ArrayList<>();
     private FinishLayout mFinishLayout;
     private MarqueeView mPlayerTitle;
@@ -78,15 +82,13 @@ public class PlayerActivity extends AppCompatActivity implements View.OnClickLis
     private ImageView mPlayerLike, mPlayerComment, mPlayerEqualizer, mPlayerMore, mPlayerBack, mPlayerPrevious, mPlayerPlay, mPlayerNext, mPlayerList, mPlayerModel;
     private SeekBar mPlayerSeekBar;
 
-    private MediaBrowserCompat mMediaBrowser;
-    private MediaControllerCompat mMediaController;
 
     private String mMusicId = "";
 
     private boolean isVertical;
 
-    private OnLrcListener mLrcListener;
-    private OnVisualizerListener mVisualizerListener;
+//    private OnLrcListener mLrcListener;
+//    private OnVisualizerListener mVisualizerListener;
 
     private FragmentManager mFragmentManager;
 
@@ -94,32 +96,35 @@ public class PlayerActivity extends AppCompatActivity implements View.OnClickLis
 
     private PlayViewModel viewModel;
 
-    public interface OnLrcListener {
-        void onUpLrc(String url);
-
-        void onUpTime(long time);
-
-        void onUpColor(int[] colors);
-    }
-
-    public interface OnVisualizerListener {
-        void onUpImage(String url);
-
-        void onUpColor(int color);
-    }
+//    public interface OnLrcListener {
+//        void onUpLrc(String url);
+//
+//        void onUpTime(long time);
+//
+//        void onUpColor(int[] colors);
+//    }
+//
+//    public interface OnVisualizerListener {
+//        void onUpImage(String url);
+//
+//        void onUpColor(int color);
+//    }
 
     public void seekTo(long time) {
-        mMediaController.getTransportControls().seekTo(time);
+        musicController.getMediaControllerCompat().getTransportControls().seekTo(time);
     }
 
-    @Override
-    public void onAttachFragment(Fragment fragment) {
-        if (fragment == mLrcFragment)
-            mLrcListener = (OnLrcListener) fragment;
-        if (fragment == mVisualizerFragment)
-            mVisualizerListener = (OnVisualizerListener) fragment;
-        super.onAttachFragment(fragment);
-    }
+//    @Override
+//    public void onAttachFragment(@NonNull Fragment fragment) {
+//        if (fragment == mLrcFragment)
+//            mLrcListener = (OnLrcListener) fragment;
+//        if (fragment == mVisualizerFragment)
+//            mVisualizerListener = (OnVisualizerListener) fragment;
+//        super.onAttachFragment(fragment);
+//    }
+
+    @Inject
+    MusicController musicController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -134,24 +139,10 @@ public class PlayerActivity extends AppCompatActivity implements View.OnClickLis
     }
 
     private void initMediaBrowser() {
-        mMediaBrowser = new MediaBrowserCompat(this,
-                new ComponentName(this, MusicService.class),
-                connectionCallback, null);
-        mMediaBrowser.connect();
+        musicController.registerControllerCallback(mMediaCallback);
+        initMediaMetaData(musicController.getMediaControllerCompat().getMetadata());
     }
 
-    private final MediaBrowserCompat.ConnectionCallback connectionCallback = new MediaBrowserCompat.ConnectionCallback() {
-
-        @Override
-        public void onConnected() {
-            MediaSessionCompat.Token token = mMediaBrowser.getSessionToken();
-            mMediaController = new MediaControllerCompat(PlayerActivity.this, token);
-            MediaMetadataCompat metadata = mMediaController.getMetadata();
-            initMediaMetaData(metadata);
-            mMediaController.registerCallback(mMediaCallback);
-            mMediaBrowser.subscribe(MusicService.MUSIC_FAVORITE, mCallback);
-        }
-    };
 
     private final MediaControllerCompat.Callback mMediaCallback = new MediaControllerCompat.Callback() {
 
@@ -200,28 +191,6 @@ public class PlayerActivity extends AppCompatActivity implements View.OnClickLis
         }
     };
 
-    private MediaBrowserCompat.SubscriptionCallback mCallback = new MediaBrowserCompat.SubscriptionCallback() {
-
-        @Override
-        public void onChildrenLoaded(String parentId, List<MediaBrowserCompat.MediaItem> children) {
-            super.onChildrenLoaded(parentId, children);
-            if (parentId.equals(MusicService.MUSIC_FAVORITE)) {
-//                for (int i = 0; i < children.size(); i++) {
-//                    if (children.get(i).getDescription().getMediaId().equals(ToolUtil.readString("MusicId"))) {
-//                        mPlayerLike.setImageDrawable(getResources().getDrawable(R.drawable.ic_heart_fill));
-//                        isLike = true;
-//                        return;
-//                    }
-//                }
-            }
-        }
-
-        @Override
-        public void onError(String parentId) {
-            super.onError(parentId);
-        }
-    };
-
     @Override
     public void onClick(View view) {
         int viewId = view.getId();
@@ -237,19 +206,19 @@ public class PlayerActivity extends AppCompatActivity implements View.OnClickLis
 //            Bundle likebundle = new Bundle();
 //            likebundle.putString("id", ToolUtil.readString("MusicId"));
 //            likebundle.putBoolean("is", isLike);
-//            mMediaController.getTransportControls().sendCustomAction(MusicService.ACTION_LIKE_MUSIC, likebundle);
+//            musicController.getMediaControllerCompat().getTransportControls().sendCustomAction(MusicService.ACTION_LIKE_MUSIC, likebundle);
         } else if (viewId == R.id.player_equalizer) {
             startActivity(new Intent(this, EqualizerActivity.class));
         } else if (viewId == R.id.player_previous) {
-            mMediaController.getTransportControls().skipToPrevious();
+            musicController.getMediaControllerCompat().getTransportControls().skipToPrevious();
         } else if (viewId == R.id.player_play) {
-            mMediaController.getTransportControls().play();
+            musicController.getMediaControllerCompat().getTransportControls().play();
         } else if (viewId == R.id.player_next) {
-            mMediaController.getTransportControls().skipToNext();
+            musicController.getMediaControllerCompat().getTransportControls().skipToNext();
         } else if (viewId == R.id.player_list) {
             startActivity(new Intent(this, MusicListDialog.class));
         } else if (viewId == R.id.player_model) {
-            MusicServiceModeHelper.toggleMode(mMediaController.getTransportControls());
+            MusicServiceModeHelper.toggleMode(musicController.getMediaControllerCompat().getTransportControls());
         }
     }
 
@@ -270,14 +239,11 @@ public class PlayerActivity extends AppCompatActivity implements View.OnClickLis
     private void upMusicView(PlaybackStateCompat state) {
         mPlayerPlay.setImageDrawable((state.getState() == PlaybackStateCompat.STATE_PLAYING) ? getResources().getDrawable(R.drawable.ic_play) : getResources().getDrawable(R.drawable.ic_pause));
         mPlayerStartText.setText(ToolUtil.getTime("mm:ss", state.getPosition()));
-        if (mLrcListener != null) {
-            mLrcListener.onUpTime(state.getPosition());
-        }
     }
 
     private void initView() {
-        mLrcFragment = new PlayerLrcFragment();
-        mVisualizerFragment = new PlayerVisualizerFragment();
+        PlayerLrcFragment mLrcFragment = new PlayerLrcFragment();
+        PlayerVisualizerFragment mVisualizerFragment = new PlayerVisualizerFragment();
         if (isVertical) {
             mViewPager2 = (ViewPager2) findViewById(R.id.view_pager_player);
             mPagerFragments.add(mVisualizerFragment);
@@ -334,10 +300,8 @@ public class PlayerActivity extends AppCompatActivity implements View.OnClickLis
 
     private void initMediaMetaData(MediaMetadataCompat metadata) {
         if (metadata == null) {
-            viewModel.mediaMetadataCompatMutableLiveData.postValue(null);
             return;
         }
-        viewModel.mediaMetadataCompatMutableLiveData.postValue(metadata);
 
         MediaMetadataInfo music = MediaMetadataMapper.mapper(metadata);
 
@@ -368,10 +332,6 @@ public class PlayerActivity extends AppCompatActivity implements View.OnClickLis
                     }
                 }
         );
-        if (mVisualizerListener != null)
-            mVisualizerListener.onUpImage(music.getAlbum());
-        if (mLrcListener != null)
-            mLrcListener.onUpLrc(CloudMusicApi.MUSIC_LRC + music.getMediaId());
 
     }
 
@@ -393,10 +353,6 @@ public class PlayerActivity extends AppCompatActivity implements View.OnClickLis
         mPlayerNext.setColorFilter(colors[1]);
         mPlayerList.setColorFilter(colors[1]);
         mPlayerModel.setColorFilter(colors[1]);
-        if (mLrcListener != null)
-            mLrcListener.onUpColor(colors);
-        if (mVisualizerListener != null)
-            mVisualizerListener.onUpColor(colors[1]);
         LayerDrawable layerDrawable = (LayerDrawable) mPlayerSeekBar.getProgressDrawable();
         Drawable drawable = layerDrawable.getDrawable(2);
         drawable.setColorFilter(colors[1], PorterDuff.Mode.SRC);
@@ -434,13 +390,6 @@ public class PlayerActivity extends AppCompatActivity implements View.OnClickLis
     protected void onDestroy() {
         super.onDestroy();
         Glide.get(this).clearMemory();
-        if (mMediaController != null) {
-            mMediaController.unregisterCallback(mMediaCallback);
-            mMediaController = null;
-        }
-        if (mMediaBrowser.isConnected()) {
-            mMediaBrowser.unsubscribe(MusicService.MUSIC_FAVORITE);
-            mMediaBrowser.disconnect();
-        }
+        musicController.unregisterControllerCallback(mMediaCallback);
     }
 }

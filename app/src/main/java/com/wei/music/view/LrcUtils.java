@@ -164,11 +164,16 @@ class LrcUtils {
                 is.close();
                 bos.close();
                 JSONObject json = new JSONObject(bos.toString(charset));
-                lrcText = json.getString("lyric");             
+//                boolean pureMusic = json.getBoolean("pureMusic");
+//                if (pureMusic){
+//                    return null;
+//                }
+                JSONObject lrc = json.getJSONObject("lrc");
+                lrcText = lrc.getString("lyric");
                 Log.i("成功", lrcText);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            return null;
         }
         return lrcText;
     }
