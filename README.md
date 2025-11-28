@@ -5,6 +5,11 @@
 **一个优雅、流畅、支持离线的音乐播放器**  
 Elegant · Material You · 零广告 · 完全开源
 
+首先感谢上游开源的作者 WeiFengWang/WeiFengMusic https://github.com/WeiFengWa/WeiFengMusic.git
+此版本基于开源的Api：https://163api.qijieya.cn/ 感谢开源作者以及服务器
+
+这是在原开源项目上做了架构以及代码优化。由于没有api参数文档，此项目的维护意义不大，可能偶尔更新，也可能不再更新
+作为参考意义，欢迎各位fork和pull request
 
 </div>
 
@@ -41,6 +46,6 @@ Elegant · Material You · 零广告 · 完全开源
 
 ```bash
 # 克隆项目
-git clone https://github.com/你的用户名/你的仓库名.git
+git clone https://github.com/Abdulla-abs/WeiFengMusic.git
 
 # 打开 Android Studio → Open 这个文件夹 → 直接运行即可
